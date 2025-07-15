@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head><title>ESP32 Config</title></head>
+<body>
+<h1>Hello from ESP32</h1>
+<pre id="info"></pre>
+<script>
+fetch('/api/config')
+  .then(r => r.json())
+  .then(d => {
+    document.getElementById('info').textContent = JSON.stringify(d, null, 2);
+  });
+</script>
+</body>
+</html>
