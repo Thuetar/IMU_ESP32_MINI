@@ -1,8 +1,14 @@
+
 //WebServerManager.cpp
 #include "WebServerManager.h"
 using namespace config;
+//using namespace overseer;
 
-WebServerManager::WebServerManager(ConfigManager& cfg) : server(80), config(cfg) {}
+WebServerManager::WebServerManager(ConfigManager& cfg)
+  : server(80), config(cfg), sysMon(nullptr) {}
+
+//WebServerManager::WebServerManager(ConfigManager& cfg)
+//  : server(80), config(cfg) {}
 
 void WebServerManager::begin() {
     Log.traceln(F("Starting web server..."));
@@ -24,6 +30,10 @@ void WebServerManager::broadcast() {
 
 void WebServerManager::registerDeviceApi(api::DeviceApi* deviceApi) {
     deviceApis.push_back(deviceApi);
+}
+
+void WebServerManager::setSystemMonitor(system_utils::SystemMonitor* monitor) {
+    this->sysMon = monitor;
 }
 
 void WebServerManager::setupRoutes() {
@@ -50,6 +60,18 @@ void WebServerManager::setupRoutes() {
         serializeJson(doc, json);
         request->send(200, "application/json", json);
     });
+
+    if (sysMon) {
+        server.on("/api/system", HTTP_GET, [this](AsyncWebServerRequest *request) {
+            JsonDocument doc;
+            doc["free_heap"] = sysMon->getFreeHeap();
+            doc["stack_high_watermark"] = sysMon->getStackHighWaterMark();
+
+            String json;
+            serializeJson(doc, json);
+            request->send(200, "application/json", json);
+        });
+    }
 
     // Ping/test
     server.on("/api/info", HTTP_GET, [](AsyncWebServerRequest* request) {

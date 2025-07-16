@@ -7,7 +7,9 @@
 #include "cli/CommandProcessor.h" 
 #include "devices/IMU/MPU6000/MPU6000.h"    
 #include "devices/IMU/MPU6000/MPU6000_instance.h"
+#include "system/SystemMonitor.h"
 
+system_utils::SystemMonitor* sysMon = nullptr;
 RUNNING_CONFIG running_config;
 config::ConfigManager configManager(SPIFFS);
 WiFiManager* wifi = nullptr;
@@ -36,7 +38,10 @@ void setup() {
         Log.errorln(F("Config load failed"));
         while (true);
   }
-
+  Log.infoln("\t\t Starting System Monitor");
+  sysMon = system_utils::createSystemMonitor(configManager);
+  sysMon->begin();
+  
   wifi = new WiFiManager(configManager);
   wifi->begin();
 
@@ -67,6 +72,7 @@ void setup() {
   Log.infoln("Loading Web Server");  
   web = new WebServerManager(configManager);
   auto* imuApi = new mpu6000::IMUApi(web->getServer(), *running_config.hardware_config.imu.mpu, configManager);
+  web->setSystemMonitor(sysMon);
   web->registerDeviceApi(imuApi);
   web->begin();
   
@@ -74,7 +80,7 @@ void setup() {
 }
 
 void loop() {
-  
+  if (sysMon) sysMon->update();
   unsigned long currentMillis = millis(); //For timing of things :)
   while (Serial.available()) {
     char c = Serial.read();

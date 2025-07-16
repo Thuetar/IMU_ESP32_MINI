@@ -72,6 +72,8 @@ void IMUApi::setupRoutes() {
                size_t index, size_t total) {
             handleConfigPostJson(request, data, len);
     });
+
+
 }
 
 void IMUApi::handleIMUJson(AsyncWebServerRequest *request) {

@@ -9,5 +9,7 @@
 */
 
 #define FORMAT_SPIFFS_IF_FAILED true
+//#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() esp_timer_init()
+//#define portGET_RUN_TIME_COUNTER_VALUE() esp_timer_get_time()
 
 #endif
