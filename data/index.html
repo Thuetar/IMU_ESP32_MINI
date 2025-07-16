@@ -1,95 +1,117 @@
 <!DOCTYPE html>
-<html>
-<head><title>OVERSEER::IMU--\>>Dashboard </title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IMU & System Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; line-height: 1.5; margin: 1rem; }
+    .section { margin-bottom: 2rem; }
+    h2 { border-bottom: 2px solid #444; padding-bottom: .5rem; }
+    .gauges, .metrics { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .gauge { width: 200px; text-align: center; }
+    .chart-container { width: 400px; height: 250px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #aaa; padding: .5rem; text-align: center; }
+  </style>
+</head>
 <body>
-<h1>Hello from ESP32</h1>
-<pre id="info"></pre>
-<script>
-    fetch('/api/config')
-      .then(r => r.json())
-      .then(d => {
-        document.getElementById('info').textContent = JSON.stringify(d, null, 2);
+  <h1>IMU & System Dashboard</h1>
+
+  <section class="section" id="imu-section">
+    <h2>🧭 IMU Readings & Stats</h2>
+    <div class="metrics">
+      <div>Pitch: <span id="imu-pitch">–</span>°</div>
+      <div>Roll: <span id="imu-roll">–</span>°</div>
+      <div>Total Samples: <span id="imu-total">–</span></div>
+      <div>Dropped Samples: <span id="imu-dropped">–</span></div>
+      <div>SPS: <span id="imu-sps">–</span></div>
+    </div>
+    <h3>Rolling Max G-Windows (seconds)</h3>
+    <table id="imu-windows">
+      <thead><tr><th>Window</th><th>Max‑G X</th><th>Y</th><th>Z</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="chart-container">
+      <canvas id="imuGchart"></canvas>
+    </div>
+  </section>
+
+  <section class="section" id="system-section">
+    <h2>💻 System Stats</h2>
+    <div class="gauges">
+      <div class="gauge"><canvas id="gauge-heap"></canvas><div>Free Heap</div></div>
+      <div class="gauge"><canvas id="gauge-stack"></canvas><div>Stack High Water</div></div>
+      <div class="gauge"><canvas id="gauge-cpu"></canvas><div>CPU Usage</div></div>
+    </div>
+  </section>
+
+  <script>
+    // Chart.js gauge-like bar utility
+    function createGauge(id, label) {
+      return new Chart(document.getElementById(id), {
+        type: 'doughnut',
+        data: { datasets: [{ data: [0, 100], backgroundColor: ['#4caf50','#ddd'], cutout: '80%' }] },
+        options: { rotation: -Math.PI, circumference: Math.PI, plugins:{ tooltip: {enabled:false}, legend:{display:false} } }
       });
+    }
 
-    async function updateIMU() {
-      try {
-        const res = await fetch('/imu');
-        const data = await res.json();
+    const gqlFmt = (v) => v.toFixed(1);
 
-        const set = (id, val) => document.getElementById(id).textContent = val.toFixed(2);
+    const heapGauge = createGauge('gauge-heap');
+    const stackGauge = createGauge('gauge-stack');
+    const cpuGauge = createGauge('gauge-cpu');
 
-        set("imu-max-x", data.lifetime_max_g.x);
-        set("imu-max-y", data.lifetime_max_g.y);
-        set("imu-max-z", data.lifetime_max_g.z);
+    const imuChart = new Chart(document.getElementById('imuGchart'), {
+      type: 'bar',
+      data: { labels: [], datasets: [
+        { label: 'Max G Raw', data: [], backgroundColor: ['#e91e63','#3f51b5','#009688'] }
+      ]},
+      options: { indexAxis: 'y', scales:{ x:{ beginAtZero:true } } }
+    });
 
-        set("imu-1s-x", data.rolling_max["1s"].x);
-        set("imu-1s-y", data.rolling_max["1s"].y);
-        set("imu-1s-z", data.rolling_max["1s"].z);
+    async function fetchIMU(){
+      const res = await fetch('/imu');
+      const j = await res.json();
+      document.getElementById('imu-pitch').textContent = gqlFmt(j.pitch);
+      document.getElementById('imu-roll').textContent = gqlFmt(j.roll);
+      document.getElementById('imu-total').textContent = j.total_samples;
+      document.getElementById('imu-dropped').textContent = j.dropped_samples;
+      document.getElementById('imu-sps').textContent = gqlFmt(j.samples_per_second);
 
-        set("imu-5s-x", data.rolling_max["5s"].x);
-        set("imu-5s-y", data.rolling_max["5s"].y);
-        set("imu-5s-z", data.rolling_max["5s"].z);
-
-        set("imu-10s-x", data.rolling_max["10s"].x);
-        set("imu-10s-y", data.rolling_max["10s"].y);
-        set("imu-10s-z", data.rolling_max["10s"].z);
-
-        document.getElementById("imu-total").textContent = data.stats.total_samples;
-        document.getElementById("imu-dropped").textContent = data.stats.dropped_samples;
-        document.getElementById("imu-rate").textContent = data.stats.samples_per_second.toFixed(1);
-      } catch (e) {
-        console.warn("Failed to fetch IMU:", e);
+      const tbody = document.querySelector('#imu-windows tbody');
+      tbody.innerHTML = '';
+      imuChart.data.labels = [];
+      imuChart.data.datasets[0].data = [];
+      for (const dur in j.max_g_windows_x) {
+        imuChart.data.labels.push(dur + 's');
+        imuChart.data.datasets[0].data.push(j.max_g_windows_x[dur]);
+        const row = `<tr>
+          <td>${dur}</td>
+          <td>${qfmt(j.max_g_windows_x[dur])}</td>
+          <td>${qfmt(j.max_g_windows_y[dur])}</td>
+          <td>${qfmt(j.max_g_windows_z[dur])}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
       }
+      imuChart.update();
     }
-    // Update every 2 seconds
-    setInterval(updateIMU, 2000);
-    updateIMU();  
 
-    async function updateSystemStats() {
-    try {
+    async function fetchSystem(){
       const res = await fetch('/api/system');
-      const data = await res.json();
-      document.getElementById('freeHeap').textContent = `${data.free_heap} bytes`;
-      document.getElementById('stackWatermark').textContent = `${data.stack_high_watermark} bytes`;
-    } catch (e) {
-      console.error('Failed to fetch system diagnostics:', e);
+      const j = await res.json();
+      const h = j.free_heap, s = j.stack_high_watermark, c = j.cpu_usage || 0;
+
+      heapGauge.data.datasets[0].data = [h, Math.max(0, Math.min(100, 1000000 - h) )];
+      stackGauge.data.datasets[0].data = [s, Math.max(0, Math.min(100, 10000 - s) )];
+      cpuGauge.data.datasets[0].data = [c, 100 - c];
+      heapGauge.update(); stackGauge.update(); cpuGauge.update();
     }
-  }
 
-  setInterval(updateSystemStats, 5000); // update every 5s
-  updateSystemStats(); // fetch once at load
-
-</script>
-<section id="imu-section" class="card">
-  <h2 class="text-xl font-bold mb-2">IMU Diagnostics</h2>
-
-  <div class="grid grid-cols-3 gap-4">
-    <div>
-      <h3 class="font-semibold">Lifetime Max G</h3>
-      <p>X: <span id="imu-max-x">0</span> g</p>
-      <p>Y: <span id="imu-max-y">0</span> g</p>
-      <p>Z: <span id="imu-max-z">0</span> g</p>
-    </div>
-
-    <div>
-      <h3 class="font-semibold">Rolling Max (1s)</h3>
-      <p>X: <span id="imu-1s-x">0</span> g</p>
-      <p>Y: <span id="imu-1s-y">0</span> g</p>
-      <p>Z: <span id="imu-1s-z">0</span> g</p>
-    </div>
-
-    <div>
-      <h3 class="font-semibold">Rolling Max (5s)</h3>
-      <p>X: <span id="imu-5s-x">0</span> g</p>
-      <p>Y: <span id="imu-5s-y">0</span> g</p>
-
-<section id="dx">
-  <h2>System Diagnostics</h2>
-  <div>
-    <strong>Free Heap:</strong> <span id="freeHeap">Loading...</span><br>
-    <strong>Stack High Water Mark:</strong> <span id="stackWatermark">Loading...</span>
-  </div>
-</section>
-
+    setInterval(fetchIMU, 1000);
+    setInterval(fetchSystem, 2000);
+    fetchIMU(); fetchSystem();
+  </script>
 </body>
 </html>

@@ -50,7 +50,6 @@ void setup() {
       while (true);
   }
   
-  
   Log.infoln("\t\t IMU Device");
   //Log.info("enable_imu_print::%s", running_config.debug_options.enable_imu_print); 
   Log.infoln("imu_log_message_interval::%u", running_config.debug_options.imu_log_message_interval); 
@@ -79,9 +78,7 @@ void setup() {
   Serial.println("READY");
 }
 
-void loop() {
-  if (sysMon) sysMon->update();
-  unsigned long currentMillis = millis(); //For timing of things :)
+void loop() {  
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
@@ -93,6 +90,9 @@ void loop() {
         inputBuffer += c;
     }
   }
+  
+  if (sysMon) sysMon->update();
+  unsigned long currentMillis = millis(); //For timing of things :)
 
   if (running_config.hardware_config.imu.enable_imu == true) {
     //Log.verboseln("Doing IMU Update...");
@@ -113,13 +113,14 @@ void loop() {
           Log.verboseln("Print Data...");
           running_config.hardware_config.imu.mpu->printMPUData (sensor_data); 
       } 
-    } 
+    }
   
     //Log.verboseln("Done with IMU");
-  }//IMU
+  }//Class IMU End
   
-  if (web) {
+  //if (web) {
   //  web->broadcast();  // assuming WebServerManager exposes IMUApi loop()
-  }
+  //}
+  
 }
 

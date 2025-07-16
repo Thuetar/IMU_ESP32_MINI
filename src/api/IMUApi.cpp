@@ -1,7 +1,6 @@
 //IMUApi.cpp
 #include "api/IMUApi.h"
-#include <ArduinoJson.h>
-#include <ArduinoLog.h>
+
 using namespace config;
 
 namespace mpu6000 {
@@ -36,18 +35,17 @@ void IMUApi::broadcast() {
         max_g.add(data.max_gx);
         max_g.add(data.max_gy);
         max_g.add(data.max_gz);
-        /*
+        
         JsonObject windows = doc.createNestedObject("max_g_windows");
+        JsonObject gx = windows["gx"].to<JsonObject>();
+        writeOrderedGWindows(gx, data.max_g_windows_x);
 
-        JsonObject gx = windows.createNestedObject("gx");
-        for (const auto& [label, value] : data.max_g_windows_x) gx[label] = value;
+        JsonObject gy = windows["gy"].to<JsonObject>();
+        writeOrderedGWindows(gy, data.max_g_windows_y);
 
-        JsonObject gy = windows.createNestedObject("gy");
-        for (const auto& [label, value] : data.max_g_windows_y) gy[label] = value;
+        JsonObject gz = windows["gz"].to<JsonObject>();
+        writeOrderedGWindows(gz, data.max_g_windows_z);
 
-        JsonObject gz = windows.createNestedObject("gz");
-        for (const auto& [label, value] : data.max_g_windows_z) gz[label] = value;
-        */
         String payload;
         serializeJson(doc, payload);
         ws.textAll(payload);
@@ -72,14 +70,25 @@ void IMUApi::setupRoutes() {
                size_t index, size_t total) {
             handleConfigPostJson(request, data, len);
     });
+}
 
+void IMUApi::writeOrderedGWindows(JsonObject& target, const std::map<String, float>& source) {
+    static const char* G_WINDOW_LABELS[] = {
+        "1s", "5s", "10s", "15s", "30s", "45s", "60s",
+        "1m", "5m", "10m", "15m", "30m"
+    };
 
+    for (const char* label : G_WINDOW_LABELS) {
+        auto it = source.find(label);
+        if (it != source.end()) {
+            target[label] = it->second;
+        }
+    }
 }
 
 void IMUApi::handleIMUJson(AsyncWebServerRequest *request) {
-    const auto& data = imu.getData();
-    //DynamicJsonDocument doc(512);
     JsonDocument doc;
+    const auto& data = imu.getData();
     
     doc["pitch"] = data.pitch_deg;
     doc["roll"] = data.roll_deg;
@@ -93,29 +102,24 @@ void IMUApi::handleIMUJson(AsyncWebServerRequest *request) {
     max_g.add(data.max_gx);
     max_g.add(data.max_gy);
     max_g.add(data.max_gz);
-    //*
-    //JsonObject windows = doc.createNestedObject("max_g_windows");
+    
     JsonObject windows = doc["max_g_windows"].to<JsonObject>();
 
-    //JsonObject gx = windows.createNestedObject("gx");
     JsonObject gx = windows["gx"].to<JsonObject>();
-    for (const auto& [label, value] : data.max_g_windows_x) gx[label] = value;
+    writeOrderedGWindows(gx, data.max_g_windows_x);
 
-    //JsonObject gy = windows.createNestedObject("gy");
     JsonObject gy = windows["gy"].to<JsonObject>();
-    for (const auto& [label, value] : data.max_g_windows_y) gy[label] = value;
+    writeOrderedGWindows(gy, data.max_g_windows_y);
 
-    //JsonObject gz = windows.createNestedObject("gz");
     JsonObject gz = windows["gz"].to<JsonObject>();
-    for (const auto& [label, value] : data.max_g_windows_z) gz[label] = value;
-    //*/
+    writeOrderedGWindows(gz, data.max_g_windows_z);
+
     String payload;
     serializeJson(doc, payload);
     request->send(200, "application/json", payload);
 }
 
-void IMUApi::handleConfigGet(AsyncWebServerRequest *request) {
-    //DynamicJsonDocument doc(256);
+void IMUApi::handleConfigGet(AsyncWebServerRequest *request) {    
     JsonDocument doc;
     doc["smoothing_enabled"] = config.getBool("imu", "smoothing_enabled", false);
     doc["spike_threshold"] = config.getFloat("imu", "spike_threshold", 3.0f);
@@ -137,8 +141,7 @@ void IMUApi::handleConfigPostForm(AsyncWebServerRequest *request) {
     request->send(204);
 }
 
-void IMUApi::handleConfigPostJson(AsyncWebServerRequest *request, uint8_t *data, size_t len) {
-    //DynamicJsonDocument doc(256);
+void IMUApi::handleConfigPostJson(AsyncWebServerRequest *request, uint8_t *data, size_t len) {    
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, data, len);
     if (err) {

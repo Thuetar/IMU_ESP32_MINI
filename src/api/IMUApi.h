@@ -5,6 +5,8 @@
 #include "devices/IMU/MPU6000/MPU6000.h"
 #include "config/ConfigManager.h"
 #include "api/DeviceApi.h"
+#include <ArduinoJson.h>
+#include <ArduinoLog.h>
 
 namespace mpu6000 {
     class IMUApi : public api::DeviceApi {
@@ -24,9 +26,10 @@ namespace mpu6000 {
         const unsigned long broadcastInterval = 100; // ms
 
         void setupRoutes();
-
+        void writeOrderedGWindows(JsonObject& target, const std::map<String, float>& source);
         // HTTP GET handlers
         void handleIMUJson(AsyncWebServerRequest *request);
+        
         void handleConfigGet(AsyncWebServerRequest *request);
 
         // HTTP POST handlers
@@ -37,4 +40,5 @@ namespace mpu6000 {
         void onWebSocketEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
                             AwsEventType type, void *arg, uint8_t *data, size_t len);
     };
+
 }
