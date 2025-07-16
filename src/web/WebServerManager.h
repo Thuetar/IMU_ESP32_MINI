@@ -11,7 +11,7 @@
 class WebServerManager {
 public:
     WebServerManager(config::ConfigManager& cfg);
-    //WebServerManager(config::ConfigManager& cfg, system_utils::SystemMonitor*);
+    
     void begin();
     void broadcast();
     void registerDeviceApi(api::DeviceApi* deviceApi);

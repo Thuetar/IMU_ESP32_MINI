@@ -9,13 +9,9 @@
 #include "config/ConfigManager.h"
 
 extern "C" void vTaskGetRunTimeStats(char* buffer);
-//extern "C" unsigned long ulTaskGetRunTimeCounter(TaskHandle_t xTask);
-//extern "C" unsigned long uxTaskGetRunTimeCounter(TaskHandle_t xTask);
+
 using namespace config;
 using namespace system_utils;
-
-// Declare external idle task handle
-//extern TaskHandle_t xIdleTaskHandle;
 
 namespace system_utils {
 
@@ -29,10 +25,6 @@ public:
         logHeap = config.getBool("system", "log_heap", true);
         logStack = config.getBool("system", "log_stack", true);
         logCpu = config.getBool("system", "log_cpu", true);
-
-        // Capture initial CPU timing values
-        lastCPUTime = esp_timer_get_time();  // microseconds
-        //lastIdleTicks = uxTaskGetRunTimeCounter(xIdleTaskHandle);
     }
 
     void update() override {
@@ -47,7 +39,8 @@ public:
             Log.infoln(F("[System] Stack high watermark: %u bytes"), getStackHighWaterMark());
         }
         if (logCpu) {
-            Log.infoln(F("[System] CPU usage: %.2f%%"), getCPUUsagePercent());
+            float cpu = getCPUUsagePercent();
+            Log.infoln(F("[System] CPU usage: %.2f%%"), cpu);
         }
     }
 
@@ -59,56 +52,33 @@ public:
         return uxTaskGetStackHighWaterMark(NULL) * sizeof(StackType_t);
     }
 
-    float getCPUUsagePercent()  {
+    float getCPUUsagePercent() {
         static char buffer[512];
+        memset(buffer, 0, sizeof(buffer));
         vTaskGetRunTimeStats(buffer);
-        Log.infoln("[System] Task stats:\n%s", buffer);
+        Log.infoln("vTask Stats:\n%s", buffer);
 
-        // Optionally, parse and extract IDLE % and subtract from 100
-        // but this log alone is very useful.
-        return 0.0f;  // Or parse and return actual percentage
+        // Parse for "IDLE" task line
+        float idlePercent = 0.0f;
+        char* line = strtok(buffer, "\r\n");
+        while (line != nullptr) {
+            if (strstr(line, "IDLE") != nullptr) {
+                // Expected format: <task name>\t<runtime>\t<percentage>\r\n
+                char* percentStr = strrchr(line, '\t');
+                if (percentStr) {
+                    percentStr++;  // skip the tab
+                    idlePercent = atof(percentStr);
+                    break;
+                }
+            }
+            line = strtok(nullptr, "\r\n");
+        }
+
+        float cpuUsage = 100.0f - idlePercent;
+        if (cpuUsage < 0.0f) cpuUsage = 0.0f;
+        if (cpuUsage > 100.0f) cpuUsage = 100.0f;
+        return cpuUsage;
     }
-
-    /*
-    float getCPUUsagePercent() {
-        int64_t now = esp_timer_get_time();  // µs since boot
-        uint32_t idleTicks = uxTaskGetRunTimeCounter(xIdleTaskHandle);
-
-        int64_t elapsedTime = now - lastCPUTime;
-        uint32_t elapsedIdle = idleTicks - lastIdleTicks;
-
-        lastCPUTime = now;
-        lastIdleTicks = idleTicks;
-
-        // Approximate CPU usage (1 - idle time / elapsed time)
-        if (elapsedTime <= 0) return 0.0f;
-
-        float usage = 100.0f * (1.0f - (float)elapsedIdle / (float)elapsedTime);
-        if (usage < 0.0f) usage = 0.0f;
-        if (usage > 100.0f) usage = 100.0f;
-
-        return usage;
-    }
-
-    float getCPUUsagePercent() {
-        int64_t now = esp_timer_get_time();
-        unsigned long idleRuntime = uxTaskGetRunTimeCounter(xIdleTaskHandle);
-
-        int64_t elapsedTime = now - lastCPUTime;
-        unsigned long elapsedIdle = idleRuntime - lastIdleTicks;
-
-        lastCPUTime = now;
-        lastIdleTicks = idleRuntime;
-
-        if (elapsedTime <= 0) return 0.0f;
-
-        float usage = 100.0f * (1.0f - (float)elapsedIdle / (float)elapsedTime);
-        if (usage < 0.0f) usage = 0.0f;
-        if (usage > 100.0f) usage = 100.0f;
-
-        return usage;
-    }
-*/
 
 private:
     unsigned long lastUpdate = 0;
@@ -116,9 +86,6 @@ private:
     bool logHeap = true;
     bool logStack = true;
     bool logCpu = true;
-
-    int64_t lastCPUTime = 0;
-    uint32_t lastIdleTicks = 0;
 };
 
 // factory
@@ -128,7 +95,3 @@ SystemMonitor* createSystemMonitor(config::ConfigManager& config) {
 }
 
 }  // namespace system_utils
-
-
-
-

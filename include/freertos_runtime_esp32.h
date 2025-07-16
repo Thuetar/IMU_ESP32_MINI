@@ -21,6 +21,7 @@ void vTaskGetRunTimeStats(char* buffer) {
     taskStatusArray = (TaskStatus_t*)pvPortMalloc(arraySize * sizeof(TaskStatus_t));
 
     if (taskStatusArray != NULL) {
+        /*
         arraySize = uxTaskGetSystemState(taskStatusArray, arraySize, &totalRunTime);
         if (totalRunTime > 0) {
             for (i = 0; i < arraySize; i++) {
@@ -37,6 +38,7 @@ void vTaskGetRunTimeStats(char* buffer) {
             strcpy(buffer, "Total runtime is zero.\n");
         }
         vPortFree(taskStatusArray);
+        */
     } else {
         strcpy(buffer, "Memory allocation failed.\n");
     }

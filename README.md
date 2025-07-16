@@ -58,6 +58,8 @@ Scripts in the raw.
 ##### Update Device SPIFFS / Flash
 pio run --target buildfs && pio run --target uploadfs
 
+pio run -t upload && pio device monitor
+
 #### Clean... Ulta Deep
 pio run --target clean
 rm -rf .pio/libdeps
