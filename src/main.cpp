@@ -95,13 +95,13 @@ void loop() {
   unsigned long currentMillis = millis(); //For timing of things :)
 
   if (running_config.hardware_config.imu.enable_imu == true) {
-    //Log.verboseln("Doing IMU Update...");
+    Log.verboseln("Doing IMU Update...");
     running_config.hardware_config.imu.mpu->update();    
 
-    //Log.verboseln("Fetching IMU Data...");
+    Log.verboseln("Fetching IMU Data...");
     auto sensor_data = running_config.hardware_config.imu.mpu->getData();  
     
-    //Log.verboseln("Smoothing Data...");
+    Log.verboseln("Smoothing Data...");
     running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(
       sensor_data, 
       running_config.hardware_config.imu.filter_config.smoothing_alpha, 
@@ -115,12 +115,14 @@ void loop() {
       } 
     }
   
-    //Log.verboseln("Done with IMU");
-  }//Class IMU End
+    Log.verboseln("Done with IMU");
+    
+  } //end if
   
   //if (web) {
   //  web->broadcast();  // assuming WebServerManager exposes IMUApi loop()
   //}
+  yield();
   
 }
 
