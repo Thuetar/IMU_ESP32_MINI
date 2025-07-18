@@ -8,6 +8,9 @@
 #include <vector>
 #include "api/DeviceApi.h"
 #include "system/SystemMonitor.h"
+
+using namespace overseer::device;
+
 class WebServerManager {
 public:
     WebServerManager(config::ConfigManager& cfg);

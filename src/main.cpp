@@ -56,21 +56,21 @@ void setup() {
   Log.infoln("smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.smoothing_alpha); 
   Log.infoln("spike_threshold:: %F", running_config.hardware_config.imu.filter_config.spike_threshold); 
   Log.infoln("window_smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.window_smoothing_alpha); 
-  Log.info("PINS SDA:: %d", running_config.hardware_config.imu.pins.sda); 
-  Log.info("PINS SCL:: %d", running_config.hardware_config.imu.pins.scl); 
+  Log.infoln("PINS SDA:: %d", running_config.hardware_config.imu.pins.sda); 
+  Log.infoln("PINS SCL:: %d", running_config.hardware_config.imu.pins.scl); 
 
   Log.infoln("Initializing IMU Device");
-  running_config.hardware_config.imu.mpu = &mpu6000::getInstance();
+  running_config.hardware_config.imu.mpu = &overseer::device::getInstance();
   if (running_config.hardware_config.imu.mpu) {
-      running_config.hardware_config.imu.mpu->init();
+      running_config.hardware_config.imu.mpu->begin();
   }
   
   //Set the Logging Level
   Log.setLevel(configManager.getLogLevel()); 
 
   Log.infoln("Loading Web Server");  
-  web = new WebServerManager(configManager);
-  auto* imuApi = new mpu6000::IMUApi(web->getServer(), *running_config.hardware_config.imu.mpu, configManager);
+  web = new WebServerManager(configManager);  
+  auto* imuApi = new overseer::device::api::IMUApi(web->getServer(), *running_config.hardware_config.imu.mpu, configManager);
   web->setSystemMonitor(sysMon);
   web->registerDeviceApi(imuApi);
   web->begin();
@@ -79,6 +79,8 @@ void setup() {
 }
 
 void loop() {  
+  unsigned long currentMillis = millis(); //For timing of things :)
+
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\n' || c == '\r') {
@@ -92,8 +94,7 @@ void loop() {
   }
   
   if (sysMon) sysMon->update();
-  unsigned long currentMillis = millis(); //For timing of things :)
-
+  
   if (running_config.hardware_config.imu.enable_imu == true) {
     Log.verboseln("Doing IMU Update...");
     running_config.hardware_config.imu.mpu->update();    
@@ -102,10 +103,7 @@ void loop() {
     auto sensor_data = running_config.hardware_config.imu.mpu->getData();  
     
     Log.verboseln("Smoothing Data...");
-    running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(
-      sensor_data, 
-      running_config.hardware_config.imu.filter_config.smoothing_alpha, 
-      running_config.hardware_config.imu.filter_config.spike_threshold);
+    running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);
     
     if (running_config.debug_enable == true && running_config.debug_options.enable_imu_print == true) {       
       if (currentMillis - running_config.debug_options.imu_log_last_print_time >= running_config.debug_options.imu_log_message_interval) {

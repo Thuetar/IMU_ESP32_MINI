@@ -1,7 +1,7 @@
 //DeviceApi.h
 #pragma once
 
-namespace api {
+namespace overseer::device::api {
 
 class DeviceApi {
 public:

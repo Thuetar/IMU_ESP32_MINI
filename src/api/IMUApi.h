@@ -8,7 +8,9 @@
 #include <ArduinoJson.h>
 #include <ArduinoLog.h>
 
-namespace mpu6000 {
+using namespace overseer::device::imu;
+
+namespace overseer::device::api {
     class IMUApi : public api::DeviceApi {
     public:
         IMUApi(AsyncWebServer& server, MPU6000& imu, config::ConfigManager& config);

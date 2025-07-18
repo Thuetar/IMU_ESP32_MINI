@@ -2,8 +2,9 @@
 #include "api/IMUApi.h"
 
 using namespace config;
+using namespace overseer::device::imu;
 
-namespace mpu6000 {
+namespace overseer::device::api {
 
 IMUApi::IMUApi(AsyncWebServer& server, MPU6000& imu, ConfigManager& config)
     : server(server), imu(imu), config(config), ws("/imu/ws") {}
