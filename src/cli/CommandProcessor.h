@@ -1,9 +1,12 @@
 #pragma once
-#include "devices/i2c/i2c_core.h"
+#include "devices/core/i2c_core.h"
 #include <Arduino.h>
 #include <functional>
 #include <map>
 #include <Wire.h>
+
+using namespace overseer::device::core;
+
 class CommandProcessor {
 
     std::map<String, std::function<String()>> getters;
@@ -82,6 +85,7 @@ public:
                     I2CCore i2c;
                     i2c.begin();
                     i2c.address_scan();
+                    
                     Serial.println("debug i2c scan ENDED");
                 }
                 else {

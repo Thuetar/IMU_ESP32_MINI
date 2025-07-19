@@ -27,21 +27,34 @@ void setup() {
   Log.notice("***         IMU CLIENT POC / WIP            ***" CR); // Info string in flash memory
   Log.notice(F(CR "******************************************" CR)); 
   
-  Log.verbose(F(CR "File System ..." CR));
-  
-  Log.notice(F(CR "******************************************" CR)); 
+  Log.verbose(F(CR "Loading SPIFFS File System ..." CR));
   if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
         Serial.println("SPIFFS Mount Failed");
         return;
-    }
+  }
+  Log.verbose(F(CR "Loading Configuration " CR));
   if (!configManager.begin()) {
         Log.errorln(F("Config load failed"));
         while (true);
   }
+  
+  
+  Log.notice(F(CR "******************************************" CR)); 
+  
   Log.infoln("\t\t Starting System Monitor");
   sysMon = system_utils::createSystemMonitor(configManager);
   sysMon->begin();
   
+  
+  
+  //Log.infoln("\t\t Initializing I2C Bus");
+  //I2CCore i2Ccore;
+  //i2Ccore.i2c_bus_reset(running_config.hardware_config.imu.pins.sda, running_config.hardware_config.imu.pins.scl);
+  //delay(100);
+  //Log.infoln("\t\t Initializing I2C Bus");
+  //i2Ccore.address_scan();
+
+  Log.infoln("\t\t Initializing Wifi");
   wifi = new WiFiManager(configManager);
   wifi->begin();
 
@@ -61,6 +74,7 @@ void setup() {
 
   Log.infoln("Initializing IMU Device");
   running_config.hardware_config.imu.mpu = &overseer::device::getInstance();
+  Log.infoln("Starting IMU...");
   if (running_config.hardware_config.imu.mpu) {
       running_config.hardware_config.imu.mpu->begin();
   }
