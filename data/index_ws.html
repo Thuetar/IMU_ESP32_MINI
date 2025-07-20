@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IMU & System Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: sans-serif; line-height: 1.5; margin: 1rem; }
+    .section { margin-bottom: 2rem; }
+    h2 { border-bottom: 2px solid #444; padding-bottom: .5rem; }
+    .gauges, .metrics { display: flex; flex-wrap: wrap; gap: 1rem; }
+    .gauge { width: 200px; text-align: center; }
+    .chart-container { width: 400px; height: 250px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #aaa; padding: .5rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>IMU & System Dashboard</h1>
+
+  <section class="section" id="imu-section">
+    <h2>🧭 IMU Readings & Stats</h2>
+    <div class="metrics">
+      <div>Pitch: <span id="imu-pitch">–</span>°</div>
+      <div>Roll: <span id="imu-roll">–</span>°</div>
+      <div>Total Samples: <span id="imu-total">–</span></div>
+      <div>Dropped Samples: <span id="imu-dropped">–</span></div>
+      <div>SPS: <span id="imu-sps">–</span></div>
+      <div>max_gx: <span id="imu-max_gx">–</span></div>
+      <div>max_gy: <span id="imu-max_gy">–</span></div>
+      <div>max_gz: <span id="imu-max_gz">–</span></div>
+    </div>
+    <h3>Rolling Max G-Windows (seconds)</h3>
+    <table id="imu-windows">
+      <thead><tr><th>Window</th><th>Max‑G X</th><th>Y</th><th>Z</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="chart-container">
+      <canvas id="imuGchart"></canvas>
+    </div>
+  </section>
+
+  <section class="section" id="system-section">
+    <h2>💻 System Stats</h2>
+    <div class="gauges">
+      <div class="gauge"><canvas id="gauge-heap"></canvas><div>Free Heap</div></div>
+      <div class="gauge"><canvas id="gauge-stack"></canvas><div>Stack High Water</div></div>
+      <div class="gauge"><canvas id="gauge-cpu"></canvas><div>CPU Usage</div></div>
+    </div>
+  </section>
+
+  <script>
+    function createGauge(id) {
+      return new Chart(document.getElementById(id), {
+        type: 'doughnut',
+        data: {
+          datasets: [{
+            data: [0, 100],
+            backgroundColor: ['#4caf50', '#ddd'],
+            cutout: '80%'
+          }]
+        },
+        options: {
+          rotation: -Math.PI,
+          circumference: Math.PI,
+          plugins: { tooltip: { enabled: false }, legend: { display: false } }
+        }
+      });
+    }
+
+    const qfmt = (v) => (v === undefined || v === null) ? '–' : v.toFixed(2);
+
+    const heapGauge = createGauge('gauge-heap');
+    const stackGauge = createGauge('gauge-stack');
+    const cpuGauge = createGauge('gauge-cpu');
+
+    const imuChart = new Chart(document.getElementById('imuGchart'), {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Max G Raw',
+          data: [],
+          backgroundColor: ['#e91e63', '#3f51b5', '#009688']
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        scales: { x: { beginAtZero: true } }
+      }
+    });
+
+    function updateIMU(j) {
+      document.getElementById('imu-pitch').textContent = qfmt(j.pitch);
+      document.getElementById('imu-roll').textContent = qfmt(j.roll);
+      document.getElementById('imu-total').textContent = j.total_samples;
+      document.getElementById('imu-dropped').textContent = j.dropped_samples;
+      document.getElementById('imu-sps').textContent = qfmt(j.samples_per_second);
+      document.getElementById('imu-max_gx').textContent = qfmt(j.max_gx);
+      document.getElementById('imu-max_gy').textContent = qfmt(j.max_gy);
+      document.getElementById('imu-max_gz').textContent = qfmt(j.max_gz);
+      const tbody = document.querySelector('#imu-windows tbody');
+      tbody.innerHTML = '';
+      imuChart.data.labels = [];
+      imuChart.data.datasets[0].data = [];
+
+      for (const dur in j.max_g_windows_x) {
+        imuChart.data.labels.push(dur + 's');
+        imuChart.data.datasets[0].data.push(j.max_g_windows_x[dur]);
+        const row = `<tr>
+          <td>${dur}</td>
+          <td>${qfmt(j.max_g_windows_x[dur])}</td>
+          <td>${qfmt(j.max_g_windows_y[dur])}</td>
+          <td>${qfmt(j.max_g_windows_z[dur])}</td>
+        </tr>`;
+        tbody.insertAdjacentHTML('beforeend', row);
+      }
+
+      imuChart.update();
+    }
+
+    async function fetchSystem(){
+      const res = await fetch('/api/system');
+      const j = await res.json();
+      const h = j.free_heap, s = j.stack_high_watermark, c = j.cpu_usage || 0;
+      heapGauge.data.datasets[0].data = [h, Math.max(0, 1000000 - h)];
+      stackGauge.data.datasets[0].data = [s, Math.max(0, 10000 - s)];
+      cpuGauge.data.datasets[0].data = [c, 100 - c];
+      heapGauge.update(); stackGauge.update(); cpuGauge.update();
+    }
+
+    function connectIMUWebSocket() {
+      let socket = new WebSocket(`ws://${location.host}/imu/ws`);
+      socket.onmessage = (event) => {
+        try {
+          const j = JSON.parse(event.data);
+          updateIMU(j);
+        } catch (err) {
+          console.warn("Bad IMU data", err);
+        }
+      };
+      socket.onerror = () => {
+        console.warn("WebSocket error, falling back to polling");
+        fallbackIMUPolling();
+      };
+      socket.onclose = () => {
+        console.warn("WebSocket closed, retrying in 5s");
+        setTimeout(connectIMUWebSocket, 5000);
+      };
+    }
+
+    function fallbackIMUPolling() {
+      setInterval(async () => {
+        try {
+          const res = await fetch('/imu');
+          const j = await res.json();
+          updateIMU(j);
+        } catch (e) {
+          console.error("Polling /imu failed", e);
+        }
+      }, 1000);
+    }
+
+    setInterval(fetchSystem, 2000);
+    fetchSystem();
+    connectIMUWebSocket();
+  </script>
+</body>
+</html>

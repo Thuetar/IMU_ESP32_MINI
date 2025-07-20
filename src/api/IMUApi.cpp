@@ -94,15 +94,18 @@ void IMUApi::handleIMUJson(AsyncWebServerRequest *request) {
     doc["pitch"] = data.pitch_deg;
     doc["roll"] = data.roll_deg;
 
+    doc["max_gx"] = data.max_gx;    
+    doc["max_gy"] = data.max_gy;
+    doc["max_gz"] = data.max_gz;
+
+    doc["total_samples"] = data.total_samples;
+    doc["dropped_samples"] = data.dropped_samples;
+    doc["pitch"] = data.samples_per_second;
+    
     JsonArray smooth = doc["smooth_g"].to<JsonArray>();
     smooth.add(data.gx_smooth);
     smooth.add(data.gy_smooth);
     smooth.add(data.gz_smooth);
-
-    JsonArray max_g = doc["max_g_lifetime"].to<JsonArray>();
-    max_g.add(data.max_gx);
-    max_g.add(data.max_gy);
-    max_g.add(data.max_gz);
     
     JsonObject windows = doc["max_g_windows"].to<JsonObject>();
 

@@ -5,15 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>IMU & System Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js"></script>
   <style>
     body { font-family: sans-serif; line-height: 1.5; margin: 1rem; }
     .section { margin-bottom: 2rem; }
     h2 { border-bottom: 2px solid #444; padding-bottom: .5rem; }
     .gauges, .metrics { display: flex; flex-wrap: wrap; gap: 1rem; }
     .gauge { width: 200px; text-align: center; }
-    .chart-container { width: 400px; height: 250px; }
+    .chart-container { width: 100%; max-width: 800px; height: 300px; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #aaa; padding: .5rem; text-align: center; }
+    #cube-container { width: 300px; height: 300px; margin-top: 1rem; }
   </style>
 </head>
 <body>
@@ -27,12 +29,17 @@
       <div>Total Samples: <span id="imu-total">–</span></div>
       <div>Dropped Samples: <span id="imu-dropped">–</span></div>
       <div>SPS: <span id="imu-sps">–</span></div>
+      <div><strong>Lifetime Max G:</strong> <span id="imu-lifetime-max">–</span></div>
     </div>
+
+    <div id="cube-container"></div>
+
     <h3>Rolling Max G-Windows (seconds)</h3>
     <table id="imu-windows">
       <thead><tr><th>Window</th><th>Max‑G X</th><th>Y</th><th>Z</th></tr></thead>
       <tbody></tbody>
     </table>
+
     <div class="chart-container">
       <canvas id="imuGchart"></canvas>
     </div>
@@ -48,16 +55,23 @@
   </section>
 
   <script>
-    // Chart.js gauge-like bar utility
-    function createGauge(id, label) {
-      return new Chart(document.getElementById(id), {
-        type: 'doughnut',
-        data: { datasets: [{ data: [0, 100], backgroundColor: ['#4caf50','#ddd'], cutout: '80%' }] },
-        options: { rotation: -Math.PI, circumference: Math.PI, plugins:{ tooltip: {enabled:false}, legend:{display:false} } }
-      });
+    function qfmt(v) {
+      return (v === null || v === undefined) ? '–' : v.toFixed(2);
     }
 
-    const gqlFmt = (v) => v.toFixed(1);
+    function createGauge(id) {
+      return new Chart(document.getElementById(id), {
+        type: 'doughnut',
+        data: {
+          datasets: [{ data: [0, 100], backgroundColor: ['#4caf50','#ddd'], cutout: '80%' }]
+        },
+        options: {
+          rotation: -Math.PI,
+          circumference: Math.PI,
+          plugins:{ tooltip: {enabled:false}, legend:{display:false} }
+        }
+      });
+    }
 
     const heapGauge = createGauge('gauge-heap');
     const stackGauge = createGauge('gauge-stack');
@@ -65,36 +79,60 @@
 
     const imuChart = new Chart(document.getElementById('imuGchart'), {
       type: 'bar',
-      data: { labels: [], datasets: [
-        { label: 'Max G Raw', data: [], backgroundColor: ['#e91e63','#3f51b5','#009688'] }
-      ]},
-      options: { indexAxis: 'y', scales:{ x:{ beginAtZero:true } } }
+      data: {
+        labels: [],
+        datasets: [
+          { label: 'X', data: [], backgroundColor: '#e91e63' },
+          { label: 'Y', data: [], backgroundColor: '#3f51b5' },
+          { label: 'Z', data: [], backgroundColor: '#009688' },
+        ]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        scales: { x: { beginAtZero: true, title: { display: true, text: 'Max G' } } },
+        plugins: { legend: { position: 'top' } }
+      }
     });
 
     async function fetchIMU(){
       const res = await fetch('/imu');
       const j = await res.json();
-      document.getElementById('imu-pitch').textContent = gqlFmt(j.pitch);
-      document.getElementById('imu-roll').textContent = gqlFmt(j.roll);
+
+      document.getElementById('imu-pitch').textContent = qfmt(j.pitch);
+      document.getElementById('imu-roll').textContent = qfmt(j.roll);
       document.getElementById('imu-total').textContent = j.total_samples;
       document.getElementById('imu-dropped').textContent = j.dropped_samples;
-      document.getElementById('imu-sps').textContent = gqlFmt(j.samples_per_second);
+      document.getElementById('imu-sps').textContent = qfmt(j.samples_per_second);
+      document.getElementById('imu-max_gx').textContent = qfmt(j.max_gx);
+      document.getElementById('imu-max_gy').textContent = qfmt(j.max_gy);
+      document.getElementById('imu-max_gz').textContent = qfmt(j.max_gz);
+      //document.getElementById('imu-lifetime-max').textContent = qfmt(j.lifetime_max_g);
+
+/* 
+      const x = j.max_g_windows_x || {};
+      const y = j.max_g_windows_y || {};
+      const z = j.max_g_windows_z || {};
 
       const tbody = document.querySelector('#imu-windows tbody');
       tbody.innerHTML = '';
-      imuChart.data.labels = [];
-      imuChart.data.datasets[0].data = [];
-      for (const dur in j.max_g_windows_x) {
-        imuChart.data.labels.push(dur + 's');
-        imuChart.data.datasets[0].data.push(j.max_g_windows_x[dur]);
+
+      const keys = Object.keys(x).sort((a,b) => parseFloat(a)-parseFloat(b));
+      imuChart.data.labels = keys.map(k => k + 's');
+      imuChart.data.datasets[0].data = keys.map(k => x[k]);
+      imuChart.data.datasets[1].data = keys.map(k => y[k]);
+      imuChart.data.datasets[2].data = keys.map(k => z[k]);
+
+      for (const dur of keys) {
         const row = `<tr>
           <td>${dur}</td>
-          <td>${qfmt(j.max_g_windows_x[dur])}</td>
-          <td>${qfmt(j.max_g_windows_y[dur])}</td>
-          <td>${qfmt(j.max_g_windows_z[dur])}</td>
+          <td>${qfmt(x[dur])}</td>
+          <td>${qfmt(y[dur])}</td>
+          <td>${qfmt(z[dur])}</td>
         </tr>`;
         tbody.insertAdjacentHTML('beforeend', row);
       }
+ */
       imuChart.update();
     }
 
@@ -103,15 +141,109 @@
       const j = await res.json();
       const h = j.free_heap, s = j.stack_high_watermark, c = j.cpu_usage || 0;
 
-      heapGauge.data.datasets[0].data = [h, Math.max(0, Math.min(100, 1000000 - h) )];
-      stackGauge.data.datasets[0].data = [s, Math.max(0, Math.min(100, 10000 - s) )];
+      heapGauge.data.datasets[0].data = [h, Math.max(0, 1000000 - h)];
+      stackGauge.data.datasets[0].data = [s, Math.max(0, 10000 - s)];
       cpuGauge.data.datasets[0].data = [c, 100 - c];
-      heapGauge.update(); stackGauge.update(); cpuGauge.update();
+
+      heapGauge.update();
+      stackGauge.update();
+      cpuGauge.update();
     }
 
     setInterval(fetchIMU, 1000);
     setInterval(fetchSystem, 2000);
     fetchIMU(); fetchSystem();
+
+    // 3D cube rendering
+    const container = document.getElementById('cube-container');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 10);
+    camera.position.z = 2;
+
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    container.appendChild(renderer.domElement);
+
+    const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+    const cubeMaterial = new THREE.MeshNormalMaterial();
+    const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    scene.add(cube);
+
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    function setCubeRotation(pitch, roll, yaw) {
+      const toRad = deg => deg * Math.PI / 180;
+      cube.rotation.x = toRad(pitch);
+      cube.rotation.y = toRad(yaw);
+      cube.rotation.z = toRad(roll);
+    }
+
+    // WebSocket for real-time updates
+    const ws = new WebSocket(`ws://${location.host}/imu/ws`);
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if ('pitch' in data && 'roll' in data) {
+          document.getElementById('imu-pitch').textContent = qfmt(data.pitch);
+          document.getElementById('imu-roll').textContent = qfmt(data.roll);
+          setCubeRotation(data.pitch, data.roll, data.yaw || 0);
+        }
+      } catch (e) {
+        console.error('WebSocket parse error:', e);
+      }
+    };
   </script>
+<!-- <hr>
+<h2>Orientation</h2>
+<div id="cube-container" style="width: 300px; height: 300px;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const container = document.getElementById('cube-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer();
+renderer.setSize(300, 300);
+container.appendChild(renderer.domElement);
+
+const geometry = new THREE.BoxGeometry();
+const material = new THREE.MeshNormalMaterial();
+const cube = new THREE.Mesh(geometry, material);
+scene.add(cube);
+
+camera.position.z = 3;
+
+// Poll IMU data every 250ms
+async function updateIMUOrientation() {
+  try {
+    const res = await fetch('/imu/json');  // Adjust endpoint if different
+    const data = await res.json();
+
+    const pitch = data.pitch_deg || 0;
+    const roll = data.roll_deg || 0;
+    const yaw = data.yaw_deg || 0; // Optional
+
+    // Convert degrees to radians
+    cube.rotation.x = THREE.MathUtils.degToRad(pitch);
+    cube.rotation.y = THREE.MathUtils.degToRad(yaw); // Optional
+    cube.rotation.z = THREE.MathUtils.degToRad(roll);
+  } catch (err) {
+    console.warn("Failed to load IMU data:", err);
+  }
+}
+
+setInterval(updateIMUOrientation, 250);
+
+function animate() {
+  requestAnimationFrame(animate);
+  renderer.render(scene, camera);
+}
+animate();
+</script> -->
+
 </body>
 </html>
