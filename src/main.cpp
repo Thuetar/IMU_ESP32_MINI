@@ -9,6 +9,8 @@
 #include "devices/IMU/MPU6000/MPU6000_instance.h"
 #include "system/SystemMonitor.h"
 
+using namespace overseer;
+
 system_utils::SystemMonitor* sysMon = nullptr;
 RUNNING_CONFIG running_config;
 config::ConfigManager configManager(SPIFFS);
@@ -64,7 +66,10 @@ void setup() {
   }
   
   Log.infoln("\t\t IMU Device");
-  //Log.info("enable_imu_print::%s", running_config.debug_options.enable_imu_print); 
+  Log.infoln("enable_imu_print::%s", running_config.debug_options.enable_imu_print ? "true" : "false"); 
+  //Log.infoln("enable_imu_print: %s", RUNNING_CONFIG::DEBUG_OPTIONS::enable_imu_print ? "true" : "false");
+  //Log.infoln("enable_imu_print: %s", RUNNING_CONFIG::DEBUG_OPTIONS::enable_imu_print ? "true" : "false");
+
   Log.infoln("imu_log_message_interval::%u", running_config.debug_options.imu_log_message_interval); 
   Log.infoln("smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.smoothing_alpha); 
   Log.infoln("spike_threshold:: %F", running_config.hardware_config.imu.filter_config.spike_threshold); 
@@ -73,8 +78,8 @@ void setup() {
   Log.infoln("PINS SCL:: %d", running_config.hardware_config.imu.pins.scl); 
 
   Log.infoln("Initializing IMU Device");
-  running_config.hardware_config.imu.mpu = &overseer::device::getInstance();
-  Log.infoln("Starting IMU...");
+  running_config.hardware_config.imu.mpu = &overseer::device::imu::getInstance();
+  Log.infoln("Starting IMU");
   if (running_config.hardware_config.imu.mpu) {
       running_config.hardware_config.imu.mpu->begin();
   }
