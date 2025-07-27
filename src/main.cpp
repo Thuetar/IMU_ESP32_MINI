@@ -3,17 +3,17 @@
     IMU_ESP32 MINI
 */
 #include "main.h"
-#include "system_config.h"
-#include "cli/CommandProcessor.h" 
+//#include "system_config.h"
+//#include "cli/CommandProcessor.h" 
 //#include "device/IMU/MPU6000/MPU6000.h"    
-#include "device/IMU/MPU6000/MPU6000_instance.h"
+//#include "device/IMU/MPU6000/MPU6000_instance.h"
 
-#include "system/SystemMonitor.h"
+//#include "system/SystemMonitor.h"
 #include "Arduino.h"
 
 using namespace overseer;
 using namespace overseer::device::ads;
-
+/*
 system_utils::SystemMonitor* sysMon = nullptr;
 RUNNING_CONFIG running_config;
 config::ConfigManager configManager(SPIFFS);
@@ -22,6 +22,7 @@ WebServerManager* web = nullptr;
 String inputBuffer;
 CommandProcessor commandProcessor;
 MPLEX mplex;
+
 
 void led_blink(bool mode ) {  
   digitalWrite(STATUS_LED_RED, mode); // LED ON
@@ -107,12 +108,48 @@ bool start_overseer_webserver()
   web->begin();
   return true;
 }
+*/
+void setup () {
+  Serial.begin(115200);
+  delay(1000);
+  Serial.println("Setup!!");
+  pinMode(STATUS_LED_INDICATOR, OUTPUT);
+  //blink_blue_led();
+  Serial.flush();
+  yield();
+  digitalWrite(STATUS_LED_GREEN, HIGH); // Blue LED ON
+  delay(1000);
 
-void setup() {
+  Serial.println("Setup!!");
+  //while (!Serial && !Serial.available()) {}
+  //while (!Serial) {}
+  Serial.flush();
+  
+  Log.begin   (LOG_LEVEL_VERBOSE, &Serial);  
+  Log.notice(F(CR "******************************************" CR)); // Info string with Newline                                                                    
+  Log.notice("***         IMU CLIENT POC / WIP            ***" CR); // Info string in flash memory
+  Log.notice(F(CR "******************************************" CR)); 
+  Serial.flush();
+
+
+  //blink_green_led();
+  Serial.flush();
+}
+
+void loop() {
+  
+}
+
+/*
+void setup_shit() {
   Serial.begin(115200);
   delay(200);
   pinMode(STATUS_LED_INDICATOR, OUTPUT);
   blink_blue_led();
+  Serial.flush();
+  yield();
+  digitalWrite(STATUS_LED_GREEN, HIGH); // Blue LED ON
+  sleep(1);
 
   Serial.println("Setup!!");
   //while (!Serial && !Serial.available()) {}
@@ -186,10 +223,10 @@ void setup() {
   Log.infoln("smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.smoothing_alpha); 
   Log.infoln("spike_threshold:: %F", running_config.hardware_config.imu.filter_config.spike_threshold); 
   Log.infoln("window_smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.window_smoothing_alpha); 
-  
+  */
   /*
     TODO: Check that we have the right i2c devices...
-  */
+  
   Log.infoln("Initializing IMU Device");
   running_config.hardware_config.imu.mpu = &overseer::device::imu::getInstance();
   Log.infoln("Starting IMU");
@@ -210,10 +247,10 @@ void setup() {
 
   Serial.println("READY");
 }
+*/
 
-
-
-void loop()
+/*
+void loop_old()
 {
   unsigned long currentMillis = millis(); //For timing of things :)
 
@@ -260,3 +297,6 @@ void loop()
 
   yield();
 }
+*/
+
+

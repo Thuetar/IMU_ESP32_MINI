@@ -1,0 +1,27 @@
+# ESP32-S3-DevKitC-1-N32R16V Custom Partition Table
+# Flash size: 32MB (0x2000000 bytes)
+# PSRAM: 16MB (enabled separately)
+#
+# Partitions layout:
+# - NVS: 24KB for non-volatile storage (key-value pairs)
+# - OTA Data: 8KB for OTA update management
+# - OTA Slot 0: 8MB app partition for OTA slot 0
+# - OTA Slot 1: 8MB app partition for OTA slot 1
+# - SPIFFS: ~14.7MB for file storage
+# - Core Dump: 64KB for crash dump storage
+#
+# Offsets and sizes aligned to 4KB boundaries.
+
+# ESP32-S3-DevKitC-1-N32R16V Custom Partition Table
+# Flash size: 32MB (0x2000000 bytes)
+# PSRAM: 16MB (enabled separately)
+
+nvs,       data, nvs,     0x9000,    0x6000
+otadata,   data, ota,     0xF000,    0x2000
+app0,      app,  ota_0,   0x20000,   0x800000
+app1,      app,  ota_1,   0x820000,  0x800000
+spiffs,    data, spiffs,  0x1020000, 0xEEF000
+coredump,  data, coredump,0x1F0F000, 0x10000
+
+
+
