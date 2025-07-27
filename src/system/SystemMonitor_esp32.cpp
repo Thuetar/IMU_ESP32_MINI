@@ -1,5 +1,4 @@
 //src/system/SystemMonitor_esp32.cpp
-#include "freertos_runtime_esp32.h" // configure stuff for build.. macros technically
 #include "SystemMonitor.h"
 #include <ArduinoLog.h>
 #include <freertos/FreeRTOS.h>
@@ -8,7 +7,7 @@
 #include <esp_timer.h>
 #include "config/ConfigManager.h"
 
-extern "C" void vTaskGetRunTimeStats(char* buffer);
+//extern "C" void vTaskGetRunTimeStats(char* buffer);
 
 using namespace config;
 using namespace system_utils;
@@ -53,6 +52,7 @@ namespace system_utils {
             }
 
             float getCPUUsagePercent() {
+                /*
                 static char buffer[512];
                 memset(buffer, 0, sizeof(buffer));
                 vTaskGetRunTimeStats(buffer);
@@ -77,6 +77,8 @@ namespace system_utils {
                 float cpuUsage = 100.0f - idlePercent;
                 if (cpuUsage < 0.0f) cpuUsage = 0.0f;
                 if (cpuUsage > 100.0f) cpuUsage = 100.0f;
+                */
+               float cpuUsage = 0.0f;
                 return cpuUsage;
             }
 

@@ -32,7 +32,9 @@ void led_blink(bool mode ) {
   sleep(5);
 }
 
-void set_system_failed () {
+void set_system_failed (String message) {
+  Serial.println(message);
+  Serial.flush();
   while (true) {
     digitalWrite(STATUS_LED_RED, HIGH); // LED ON
     delay(100);
@@ -45,6 +47,28 @@ void set_system_failed () {
     sleep(5);
     yield();
   }
+}
+
+void blink_blue_led()
+{
+  digitalWrite(STATUS_LED_INDICATOR, HIGH); // Blue LED ON
+  delay(250);
+  digitalWrite(STATUS_LED_INDICATOR, LOW); // Blue LED off
+  delay(500);
+  digitalWrite(STATUS_LED_INDICATOR, HIGH); // Blue LED ON
+  delay(250);
+  digitalWrite(STATUS_LED_INDICATOR, LOW); // Blue LED off
+}
+
+void blink_green_led()
+{
+  digitalWrite(STATUS_LED_GREEN, HIGH); // Blue LED ON
+  delay(250);
+  digitalWrite(STATUS_LED_GREEN, LOW); // Blue LED off
+  delay(500);
+  digitalWrite(STATUS_LED_GREEN, HIGH); // Blue LED ON
+  delay(250);
+  digitalWrite(STATUS_LED_GREEN, LOW); // Blue LED off
 }
 
 bool oc_configure_i2c_hardware()
@@ -85,29 +109,39 @@ bool start_overseer_webserver()
 }
 
 void setup() {
-  pinMode(STATUS_LED_INDICATOR, OUTPUT);  
-  digitalWrite(STATUS_LED_INDICATOR, HIGH); // Blue LED ON
-  
   Serial.begin(115200);
+  delay(200);
+  pinMode(STATUS_LED_INDICATOR, OUTPUT);
+  blink_blue_led();
+
   Serial.println("Setup!!");
-  while (!Serial && !Serial.available()) {}
+  //while (!Serial && !Serial.available()) {}
+  //while (!Serial) {}
+  Serial.flush();
   
   Log.begin   (LOG_LEVEL_VERBOSE, &Serial);  
   Log.notice(F(CR "******************************************" CR)); // Info string with Newline                                                                    
   Log.notice("***         IMU CLIENT POC / WIP            ***" CR); // Info string in flash memory
   Log.notice(F(CR "******************************************" CR)); 
-  
+  Serial.flush();
+
   Log.verbose(F(CR "Loading SPIFFS File System ..." CR));
+  Serial.flush();
   if(!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED)){
         Serial.println("SPIFFS Mount Failed");
-        set_system_failed();
+        Serial.flush();
+        set_system_failed("SPIFFS Mount Failed");
         return;
   }
-  
+  blink_green_led();
+  Serial.flush();
+
   Log.verbose(F(CR "Loading Configuration " CR));
+  Serial.flush();
   if (!configManager.begin()) {
         Log.errorln(F("Config load failed"));
-        set_system_failed();
+        Serial.flush();
+        set_system_failed(F("Config load failed"));
         while (true);
   }
   
@@ -122,7 +156,7 @@ void setup() {
 
   if (!wifi->isConnected()) {
       Log.errorln(F("WiFi connection failed. Halting."));
-      set_system_failed();
+      set_system_failed(F("WiFi connection failed. Halting."));
       while (true);
   }
   Log.notice(F(CR "******************************************" CR)); 
@@ -168,8 +202,8 @@ void setup() {
   
   // Start App (web) Server
   if (start_overseer_webserver() == false) {
-    Log.errorln("Webserver Failed to Start");
-    set_system_failed();
+    Log.errorln(F("Webserver Failed to Start"));
+    set_system_failed(F("Webserver Failed to Start"));
   } else {
     Log.infoln ("Web Started");
   }

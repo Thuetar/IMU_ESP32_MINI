@@ -9,3 +9,4 @@ data.pio/
 .idea/
 lib/
 .gitignore
+platformio copy.ini-july26.txt
