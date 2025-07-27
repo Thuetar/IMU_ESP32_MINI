@@ -4,6 +4,8 @@
 * Minimal Power REquirements
 * WiFi Transmit Readings
 
+
+
 ## Build Requirements
 ### Espressif API (Special) Requirements
 Edge case maybe? 
@@ -12,6 +14,8 @@ Pulling the cpu and task data requires some deeeep internals where maybe coverag
 ## Commands
 ### DEBUG 
 - i2c scan
+
+
 
 ## Links of goodness
 https://www.espboards.dev/esp32/nodemcu-32s/
@@ -66,3 +70,5 @@ rm -rf .pio/libdeps
 rm -rf .pio/build
 rm -rf .pio/.cache
 rm -rf ~/.platformio/lib
+
+

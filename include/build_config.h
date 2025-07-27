@@ -12,4 +12,13 @@
 //#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS() esp_timer_init()
 //#define portGET_RUN_TIME_COUNTER_VALUE() esp_timer_get_time()
 
+#define OVERSEER_SDA_PIN 8
+#define OVERSEER_SCL_PIN 9
+#define STATUS_LED_GREEN 10
+#define STATUS_LED_YELLOW 11
+#define STATUS_LED_RED 12
+#define STATUS_LED_INDICATOR 13
+
+#define WCS_SENSOR_1_ADS_CHANNEL 0
+#define WCS_SENSOR_1_GAIN 0
 #endif

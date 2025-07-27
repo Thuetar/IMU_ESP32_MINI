@@ -1,0 +1,24 @@
+{
+    "folders": [
+        {
+            "name": "IMU_ESP32_MINI (Main Project)",
+            "path": "."
+        },
+        {
+            "name": "libOverseer (Shared Library)",
+            "path": "../libOverseer"
+        },
+        {
+            "path": "../test_harness"
+        }
+    ],
+    "settings": {
+        "C_Cpp.default.compileCommands": "${workspaceFolder:IMU_ESP32_MINI (Main Project)}/compile_commands.json"
+    },
+    "extensions": {
+        "recommendations": [
+            "platformio.platformio-ide",
+            "ms-vscode.cpptools"
+        ]
+    }
+}

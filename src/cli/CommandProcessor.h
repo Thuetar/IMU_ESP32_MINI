@@ -1,12 +1,12 @@
 #pragma once
 //#include "devices/core/i2c_core.h"
-#include <devices/core/i2c_core.h>
+//#include <device/core/i2c_core.h>
 #include <Arduino.h>
 #include <functional>
 #include <map>
-#include <Wire.h>
+//#include <Wire.h>
 
-using namespace overseer::device::core;
+//using namespace overseer::device::core;
 
 class CommandProcessor {
 
@@ -83,9 +83,9 @@ public:
             else if (key == "i2c") {
                 if (val == "scan") {
                     Serial.println("Starting i2c scan");
-                    I2CCore i2c;
-                    i2c.begin();
-                    i2c.address_scan();
+                    //I2CCore i2c;
+                    //i2c.begin();
+                    //i2c.address_scan();
                     
                     Serial.println("debug i2c scan ENDED");
                 }

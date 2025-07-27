@@ -4,7 +4,7 @@
 #include <SPIFFS.h>
 #include <ArduinoLog.h>
 #include <ArduinoJson.h>
-#include "../config/ConfigManager.h"
+#include <config/ConfigManager.h>
 #include <vector>
 #include "api/DeviceApi.h"
 #include "system/SystemMonitor.h"

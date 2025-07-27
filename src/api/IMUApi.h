@@ -2,7 +2,7 @@
 #pragma once
 
 #include <ESPAsyncWebServer.h>
-#include "devices/IMU/MPU6000/MPU6000.h"
+#include "device/IMU/MPU6000/MPU6000.h"
 #include "config/ConfigManager.h"
 #include "api/DeviceApi.h"
 #include <ArduinoJson.h>
