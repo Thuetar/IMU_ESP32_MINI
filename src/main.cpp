@@ -3,17 +3,17 @@
     IMU_ESP32 MINI
 */
 #include "main.h"
-//#include "system_config.h"
-//#include "cli/CommandProcessor.h" 
+#include "system_config.h"
+#include "cli/CommandProcessor.h" 
 //#include "device/IMU/MPU6000/MPU6000.h"    
-//#include "device/IMU/MPU6000/MPU6000_instance.h"
+#include "device/IMU/MPU6000/MPU6000_instance.h"
 
-//#include "system/SystemMonitor.h"
+#include "system/SystemMonitor.h"
 #include "Arduino.h"
 
 using namespace overseer;
 using namespace overseer::device::ads;
-/*
+
 system_utils::SystemMonitor* sysMon = nullptr;
 RUNNING_CONFIG running_config;
 config::ConfigManager configManager(SPIFFS);
@@ -84,11 +84,11 @@ bool oc_configure_i2c_hardware()
 
   if (mplex.begin() == true)
   {
-    Log.infoln("MPLEX (ADS1115) Started");
+    Log.infoln(F("MPLEX (ADS1115) Started"));
   }
   else
   {
-    Log.errorln("MPLEX Failed Starting!");
+    Log.errorln(F("MPLEX Failed Starting!"));
     //set_system_failed();
     return false;
   }
@@ -108,40 +108,8 @@ bool start_overseer_webserver()
   web->begin();
   return true;
 }
-*/
-void setup () {
-  Serial.begin(115200);
-  delay(1000);
-  Serial.println("Setup!!");
-  pinMode(STATUS_LED_INDICATOR, OUTPUT);
-  //blink_blue_led();
-  Serial.flush();
-  yield();
-  digitalWrite(STATUS_LED_GREEN, HIGH); // Blue LED ON
-  delay(1000);
 
-  Serial.println("Setup!!");
-  //while (!Serial && !Serial.available()) {}
-  //while (!Serial) {}
-  Serial.flush();
-  
-  Log.begin   (LOG_LEVEL_VERBOSE, &Serial);  
-  Log.notice(F(CR "******************************************" CR)); // Info string with Newline                                                                    
-  Log.notice("***         IMU CLIENT POC / WIP            ***" CR); // Info string in flash memory
-  Log.notice(F(CR "******************************************" CR)); 
-  Serial.flush();
-
-
-  //blink_green_led();
-  Serial.flush();
-}
-
-void loop() {
-  
-}
-
-/*
-void setup_shit() {
+void setup() {
   Serial.begin(115200);
   delay(200);
   pinMode(STATUS_LED_INDICATOR, OUTPUT);
@@ -176,9 +144,9 @@ void setup_shit() {
   Log.verbose(F(CR "Loading Configuration " CR));
   Serial.flush();
   if (!configManager.begin()) {
-        Log.errorln(F("Config load failed"));
+        Log.errorln( F("PANIC!! Config load failed") );
         Serial.flush();
-        set_system_failed(F("Config load failed"));
+        set_system_failed(F("PANIC!! Config load failed"));
         while (true);
   }
   
@@ -202,12 +170,14 @@ void setup_shit() {
   pinMode(STATUS_LED_GREEN, OUTPUT);
   pinMode(STATUS_LED_YELLOW, OUTPUT);
   pinMode(STATUS_LED_RED, OUTPUT);  
-  //pinMode(STATUS_LED_INDICATOR, OUTPUT);  
+  pinMode(STATUS_LED_INDICATOR, OUTPUT);  
 
   digitalWrite(STATUS_LED_GREEN, LOW); // LED OFF
   digitalWrite(STATUS_LED_YELLOW, LOW); // LED OFF
   digitalWrite(STATUS_LED_RED, LOW); // LED OFF
   digitalWrite(STATUS_LED_INDICATOR, HIGH); // Blue LED ON
+  
+  Log.infoln("Configure and Start I2C");  
   oc_configure_i2c_hardware();
 
   led_blink (HIGH);
@@ -223,10 +193,10 @@ void setup_shit() {
   Log.infoln("smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.smoothing_alpha); 
   Log.infoln("spike_threshold:: %F", running_config.hardware_config.imu.filter_config.spike_threshold); 
   Log.infoln("window_smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.window_smoothing_alpha); 
-  */
+  
   /*
     TODO: Check that we have the right i2c devices...
-  
+  */
   Log.infoln("Initializing IMU Device");
   running_config.hardware_config.imu.mpu = &overseer::device::imu::getInstance();
   Log.infoln("Starting IMU");
@@ -247,10 +217,10 @@ void setup_shit() {
 
   Serial.println("READY");
 }
-*/
 
-/*
-void loop_old()
+
+
+void loop ()
 {
   unsigned long currentMillis = millis(); //For timing of things :)
 
@@ -297,6 +267,4 @@ void loop_old()
 
   yield();
 }
-*/
-
 
