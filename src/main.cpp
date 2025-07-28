@@ -74,27 +74,28 @@ void blink_green_led()
 
 bool oc_configure_i2c_hardware()
 {
+  bool ret = false;
   Log.infoln("\t ___ Wire (i2c) Starting ___");
-  Log.infoln("PINS SDA:: %d", OVERSEER_SDA_PIN);
-  Log.infoln("PINS SCL:: %d", OVERSEER_SCL_PIN);
+  Log.info("PINS SDA:: %d, \t", OVERSEER_SDA_PIN); Log.infoln("PINS SCL:: %d", OVERSEER_SCL_PIN);
 
-  Wire.begin(
-    OVERSEER_SDA_PIN, 
-    OVERSEER_SCL_PIN);
-
-  if (mplex.begin() == true)
-  {
-    Log.infoln(F("MPLEX (ADS1115) Started"));
+  ret = Wire.begin( OVERSEER_SDA_PIN, OVERSEER_SCL_PIN);
+  Log.infoln ("Bret: %b", ret);
+  
+  if (ret == false) {
+    Log.infoln ("Bret is false");
   }
-  else
-  {
-    Log.errorln(F("MPLEX Failed Starting!"));
-    //set_system_failed();
-    return false;
+  
+  if (mplex.begin() == false) {
+    Log.infoln ("MPLEX is False");
+    return false;    
   }
+  else {
+    Log.verboseln(F("MPLEX (ADS1115) Started"));
+  }
+  
   Log.infoln("\t\t Starting DC Current Sensor");
   float fzero = mplex.calibrate_zero();
-  Log.infoln("Calibration voltage: %f", fzero);
+  Log.infoln("MPLEX::Calibration voltage: %f", fzero);
   return true;
 }
 
@@ -143,13 +144,13 @@ void setup() {
 
   Log.verbose(F(CR "Loading Configuration " CR));
   Serial.flush();
-  if (!configManager.begin()) {
-        Log.errorln( F("PANIC!! Config load failed") );
-        Serial.flush();
-        set_system_failed(F("PANIC!! Config load failed"));
-        while (true);
+  if (!configManager.begin()) {        
+        set_system_failed(F("PANIC!! Config load failed"));        
   }
-  
+
+  //Set the Logging Level
+  //Log.setLevel(configManager.getLogLevel());
+
   Log.notice(F(CR "******************************************" CR)); 
   Log.infoln("\t\t Starting System Monitor");
   sysMon = system_utils::createSystemMonitor(configManager);
@@ -159,11 +160,10 @@ void setup() {
   wifi = new WiFiManager(configManager);
   wifi->begin();
 
-  if (!wifi->isConnected()) {
-      Log.errorln(F("WiFi connection failed. Halting."));
-      set_system_failed(F("WiFi connection failed. Halting."));
-      while (true);
+  if (!wifi->isConnected()) {      
+      set_system_failed(F("WiFi connection failed. Halting."));      
   }
+  Serial.println("\n\n AM I HERE?? \n\n");
   Log.notice(F(CR "******************************************" CR)); 
   
   Log.infoln("\t\t Starting User Hardware Setup");  
@@ -177,11 +177,15 @@ void setup() {
   digitalWrite(STATUS_LED_RED, LOW); // LED OFF
   digitalWrite(STATUS_LED_INDICATOR, HIGH); // Blue LED ON
   
-  Log.infoln("Configure and Start I2C");  
-  oc_configure_i2c_hardware();
+  Log.infoln("Configure and Start I2C.");  
+  if (oc_configure_i2c_hardware() == false) {    
+    Log.errorln("i2c startup failed!!");
+    mplex.scan_i2c_bus ();
+    set_system_failed(F("MPLEX Failed Starting!"));
+  }
 
   led_blink (HIGH);
-  sleep(1);
+  delay(500);
   led_blink (LOW);
 
   Log.infoln("\t\t IMU Device");
@@ -204,8 +208,6 @@ void setup() {
       running_config.hardware_config.imu.mpu->begin();
   }
   
-  //Set the Logging Level
-  Log.setLevel(configManager.getLogLevel());
   
   // Start App (web) Server
   if (start_overseer_webserver() == false) {
@@ -238,32 +240,46 @@ void loop ()
   
   if (sysMon) sysMon->update();
   
-  float voltage = mplex.get_voltage(WCS_SENSOR_1_ADS_CHANNEL);
-  float current = mplex.get_current(WCS_SENSOR_1_ADS_CHANNEL);
+  /**
+   * @details Do Energy Readings... 
+   */  
+  //float voltage = mplex.get_voltage(WCS_SENSOR_1_ADS_CHANNEL);
+  //float current = mplex.get_current(WCS_SENSOR_1_ADS_CHANNEL);  
+    //Log.verbose("ADS:0 Reading:: "); Log.verboseln(mplex.get_voltage(0));    
+  ENERGY_READING reading = mplex.get_energy_reading(WCS_SENSOR_1_ADS_CHANNEL);
+  if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval) {
+      running_config.debug_options.log_last_print_time = currentMillis;  
+      if (running_config.debug_enable == true) {       
+        Serial.print("ADS:0 Raw Reading:: "); Serial.println(mplex.get_raw_voltage(0));         
+        Log.verboseln("Print Sensor Data...");
+        Serial.print("\tAnalog voltage 0: "); Serial.print(reading.voltage); Serial.print('\n'); 
+        //Serial.println(voltage, 3); 
+        Serial.print("\tAnalog current 0: "); Serial.print(reading.current); Serial.print('\n'); 
+        //Serial.println(current, 3);         
+      }      
 
-  if (running_config.hardware_config.imu.enable_imu == true) {
-    Log.verboseln("Doing IMU Update...");
-    running_config.hardware_config.imu.mpu->update();    
+  }  
+  /**
+   * @details IMU 
+   */
+  //Log.verboseln("Doing IMU Update...");
+  running_config.hardware_config.imu.mpu->update();        
+  //Log.verboseln("Fetching IMU Data...");
+  auto sensor_data = running_config.hardware_config.imu.mpu->getData();  
+  //Log.verboseln("Smoothing IMU Data...");
+  running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);    
 
-    Log.verboseln("Fetching IMU Data...");
-    auto sensor_data = running_config.hardware_config.imu.mpu->getData();  
-    
-    Log.verboseln("Smoothing Data...");
-    //running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);
-    
+  if (running_config.debug_enable == true) {
     if (running_config.debug_enable == true && running_config.debug_options.enable_imu_print == true) {       
       if (currentMillis - running_config.debug_options.imu_log_last_print_time >= running_config.debug_options.imu_log_message_interval) {
           running_config.debug_options.imu_log_last_print_time = currentMillis;          
-          Log.verboseln("Print Data...");
-          running_config.hardware_config.imu.mpu->printMPUData (sensor_data); 
-          Serial.print("\tAnalog voltage 0: "); Serial.print(voltage); Serial.print('\t'); Serial.println(voltage, 3); 
-          Serial.print("\tAnalog current 0: "); Serial.print(current); Serial.print('\t'); Serial.println(current, 3); 
-      } 
-    }
-  
+          Log.verboseln("Print IMU Data...");
+          running_config.hardware_config.imu.mpu->printMPUData (sensor_data);           
+      }     
+    }  
     Log.verboseln("Done with IMU");
-    
-  } //end if
+  } //end IMU IF
+
 
   yield();
 }

@@ -20,6 +20,9 @@ Pulling the cpu and task data requires some deeeep internals where maybe coverag
 ## Links of goodness
 https://www.espboards.dev/esp32/nodemcu-32s/
 
+### Display? 
+https://www.waveshare.com/product/displays/21.5inch-fhd-monitor.htm?sku=24094
+
 ## Examples
 Example payload from /api/system:
 {
