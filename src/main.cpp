@@ -5,8 +5,9 @@
 #include "main.h"
 #include "system_config.h"
 #include "cli/CommandProcessor.h" 
-//#include "device/IMU/MPU6000/MPU6000.h"    
+#include "device/ads/MPLEX.h"
 #include "device/IMU/MPU6000/MPU6000_instance.h"
+#include "api/MPLEXApi.h"
 
 #include "system/SystemMonitor.h"
 #include "Arduino.h"
@@ -83,6 +84,7 @@ bool oc_configure_i2c_hardware()
   
   if (ret == false) {
     Log.infoln ("Bret is false");
+    return false;    
   }
   
   if (mplex.begin() == false) {
@@ -94,18 +96,24 @@ bool oc_configure_i2c_hardware()
   }
   
   Log.infoln("\t\t Starting DC Current Sensor");
-  float fzero = mplex.calibrate_zero();
-  Log.infoln("MPLEX::Calibration voltage: %f", fzero);
+  mplex.calibrateAllChannels();
+  Log.infoln("MPLEX::All channels calibrated");
+
+
   return true;
 }
 
 bool start_overseer_webserver()
 {
-  Log.infoln("Loading Web Server");
+  Log.infoln("Web Server:: Starting");
   web = new WebServerManager(configManager);
   auto *imuApi = new overseer::device::api::IMUApi(web->getServer(), *running_config.hardware_config.imu.mpu, configManager);
+  auto *mplexApi = new overseer::device::api::MPLEXApi(web->getServer(), mplex, configManager);
   web->setSystemMonitor(sysMon);
   web->registerDeviceApi(imuApi);
+  Log.infoln("Web Server:: Registering MultiPlexer API");
+  web->registerDeviceApi(mplexApi);
+
   web->begin();
   return true;
 }
@@ -238,35 +246,32 @@ void loop ()
     }
   }
   
-  if (sysMon) sysMon->update();
+  if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval) {
+    if (sysMon) sysMon->update();
+  }
   
   /**
-   * @details Do Energy Readings... 
-   */  
-  //float voltage = mplex.get_voltage(WCS_SENSOR_1_ADS_CHANNEL);
-  //float current = mplex.get_current(WCS_SENSOR_1_ADS_CHANNEL);  
-    //Log.verbose("ADS:0 Reading:: "); Log.verboseln(mplex.get_voltage(0));    
-  ENERGY_READING reading = mplex.get_energy_reading(WCS_SENSOR_1_ADS_CHANNEL);
+   * @details Do MultiPlexer Readings... 
+   * 
+   * Note:: There are two Las_Log times. One for IMU and Another for Device MPLEX
+   */    
+  auto channelData = mplex.getChannelData(WCS_SENSOR_1_ADS_CHANNEL);
   if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval) {
       running_config.debug_options.log_last_print_time = currentMillis;  
       if (running_config.debug_enable == true) {       
-        Serial.print("ADS:0 Raw Reading:: "); Serial.println(mplex.get_raw_voltage(0));         
-        Log.verboseln("Print Sensor Data...");
-        Serial.print("\tAnalog voltage 0: "); Serial.print(reading.voltage); Serial.print('\n'); 
-        //Serial.println(voltage, 3); 
-        Serial.print("\tAnalog current 0: "); Serial.print(reading.current); Serial.print('\n'); 
-        //Serial.println(current, 3);         
+        Serial.print("ADS:0 Raw Reading:: "); Serial.println(channelData.raw_value);         
+        Log.verboseln("Print mplex/ADS Data...");
+        Serial.print("\tAnalog voltage 0: "); Serial.print(channelData.voltage); Serial.print('\n'); 
+        Serial.print("\tScaled value 0: "); Serial.print(channelData.scaled_value); Serial.print('\n'); 
+        Serial.print("\tChannel valid: "); Serial.print(channelData.valid ? "true" : "false"); Serial.print('\n');
       }      
-
   }  
+
   /**
    * @details IMU 
-   */
-  //Log.verboseln("Doing IMU Update...");
-  running_config.hardware_config.imu.mpu->update();        
-  //Log.verboseln("Fetching IMU Data...");
-  auto sensor_data = running_config.hardware_config.imu.mpu->getData();  
-  //Log.verboseln("Smoothing IMU Data...");
+   */  
+  running_config.hardware_config.imu.mpu->update();          
+  auto sensor_data = running_config.hardware_config.imu.mpu->getData();    
   running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);    
 
   if (running_config.debug_enable == true) {
