@@ -28,12 +28,9 @@ MPLEX mplex; //
 // U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); // Nope
 // U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8x8(U8G2_R0, /* SCL=*/ OVERSEER_SCL_PIN, /* SDA=*/ OVERSEER_SDA_PIN); //No Love
 // U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2( U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 9, /* data=*/ 8);
-// U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2 = nullptr;
+//U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2 = nullptr;
 //std::unique_ptr<U8G2_SSD1306_128X64_NONAME_F_HW_I2C> u8g2;
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2 ( U8G2_R0, 
-        /* reset=*/ U8X8_PIN_NONE, 
-        /* clock=*/ 9, 
-        /* data=*/ 8);
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2 ( U8G2_R0, U8X8_PIN_NONE, 9, 8);
         
         
 void led_blink(bool mode)
@@ -105,12 +102,13 @@ std::vector<int> get_i2c_device_list()
 
 bool oc_configure_i2c_hardware()
 {
-    bool ret = false;
+    bool ret = true;
     Log.infoln("___ oc_configure_i2c_hardware (i2c) Starting ___");
     Log.info("PINS SDA:: %d, \t", OVERSEER_SDA_PIN);
     Log.infoln("PINS SCL:: %d", OVERSEER_SCL_PIN);
     Log.infoln("CheckPoint 1a");
-    ret = Wire.begin(OVERSEER_SDA_PIN, OVERSEER_SCL_PIN);
+    //ret = Wire.begin(OVERSEER_SDA_PIN, OVERSEER_SCL_PIN);
+    
     Log.verboseln("Wire.Begin Return:: %b", ret);
     Log.infoln("CheckPoint 1b");
     if (ret == false)
@@ -133,6 +131,7 @@ bool oc_configure_i2c_hardware()
     u8g2.drawStr(0, 24, "Balls So Heavy");
     u8g2.sendBuffer();
     Log.infoln("Initializing System Display Finished.");
+    /*
     Log.verboseln ("MPLEX(ADS1115)::Starting...");
     if (mplex.begin() == false)
     {
@@ -147,6 +146,7 @@ bool oc_configure_i2c_hardware()
     Log.infoln("Starting Calibrate DC Current Sensor");
     mplex.calibrateAllChannels();
     Log.infoln("MPLEX::All channels calibrated");    
+    */
     Log.infoln(" ___ oc_configure_i2c_hardware (i2c) Exit ___");
     return true;
 }
@@ -166,7 +166,30 @@ bool start_overseer_webserver()
     return true;
 }
 
-void setup()
+void setup ()
+{
+    Serial.begin(115200);
+    delay(200);
+    Log.begin(LOG_LEVEL_VERBOSE, &Serial);
+    oc_configure_i2c_hardware() ;
+    //Wire.begin(OVERSEER_SDA_PIN, OVERSEER_SCL_PIN);
+    //Wire.begin(8,9); // Args SDA=9 SCL=8
+    //Log.verboseln( Wire.available() );
+    delay(200);
+    //u8g2 = new U8G2_SSD1306_128X64_NONAME_F_HW_I2C( U8G2_R0, U8X8_PIN_NONE, 9, 8);
+
+    delay(200);
+    u8g2.begin ();
+    u8g2.clearBuffer();
+    delay (500);
+    u8g2.setFont(u8g2_font_ncenB08_tr);
+    u8g2.drawStr(0, 24, "MeowStorm Heavy Industries");
+    u8g2.sendBuffer();
+    Serial.println("READY");
+}
+
+
+void setup_orig()
 {
     Serial.begin(115200);
     delay(200);
