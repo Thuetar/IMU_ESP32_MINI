@@ -1,0 +1,8 @@
+{
+    "cmake.allowCommentsInPresetsFile": true,
+    "C_Cpp.default.compileCommands": [
+        "${workspaceFolder}/compile_commands.json"
+    ],
+    "cmake.configureOnOpen": false
+}
+

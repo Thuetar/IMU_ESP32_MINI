@@ -9,9 +9,14 @@
 */
 
 #define FORMAT_SPIFFS_IF_FAILED true
-
+// I2C INIT
 #define OVERSEER_SDA_PIN 8
 #define OVERSEER_SCL_PIN 9
+
+// I2C Addresses
+// 0x3C Display
+// IMU 
+
 //INDICATORS 
 #define STATUS_LED_GREEN 10 //FIXME: SPI flash / strapping conflicts
 #define STATUS_LED_YELLOW 11 //FIXME: SPI flash / strapping conflicts

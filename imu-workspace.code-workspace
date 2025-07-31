@@ -13,6 +13,18 @@
         }
     ],
     "settings": {
+        "files.exclude": {
+            "**/build/**": true,
+            "**/.pio/**": true,
+            "**/node_modules/**": true,
+            "../libOverseer/src/device/environment/**": true,
+            "../libOverseer/src/device/ads/MPLEX.cpp": true
+        },
+        "search.exclude": {
+            "**/build/**": true,
+            "**/.pio/**": true,
+            "../libOverseer/src/device/environment/**": true
+        },
         "C_Cpp.default.compileCommands": "${workspaceFolder:IMU_ESP32_MINI (Main Project)}/compile_commands.json"
     },
     "extensions": {
