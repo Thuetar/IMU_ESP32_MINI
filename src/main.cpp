@@ -14,7 +14,7 @@
 
 using namespace overseer;
 using namespace overseer::device::ads;
-using namespace overseer::device::environment;
+//using namespace overseer::device::environment;
 
 system_utils::SystemMonitor *sysMon = nullptr;
 RUNNING_CONFIG running_config;
@@ -24,28 +24,31 @@ WebServerManager *web = nullptr;
 String inputBuffer;
 CommandProcessor commandProcessor;
 MPLEX mplex; //
-DHTFAMILY dht1;
+//DHTFAMILY dht1;
 // U8X8_SSD1306_128X64_NONAME_HW_I2C u8x8(/* reset=*/U8X8_PIN_NONE); // Nope
 // U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8x8(U8G2_R0, /* SCL=*/ OVERSEER_SCL_PIN, /* SDA=*/ OVERSEER_SDA_PIN); //No Love
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(
-  U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 9, /* data=*/ 8);
-
-
-
+// U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2( U8G2_R0, /* reset=*/ U8X8_PIN_NONE, /* clock=*/ 9, /* data=*/ 8);
+// U8G2_SSD1306_128X64_NONAME_F_HW_I2C* u8g2 = nullptr;
+//std::unique_ptr<U8G2_SSD1306_128X64_NONAME_F_HW_I2C> u8g2;
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2 ( U8G2_R0, 
+        /* reset=*/ U8X8_PIN_NONE, 
+        /* clock=*/ 9, 
+        /* data=*/ 8);
+        
+        
 void led_blink(bool mode)
 {
     digitalWrite(STATUS_LED_RED, mode); // LED ON
     delay(50);
     digitalWrite(STATUS_LED_YELLOW, mode); // LED ON
     delay(25);
-    digitalWrite(STATUS_LED_GREEN, mode); // LED Off
-    sleep(5);
+    digitalWrite(STATUS_LED_GREEN, mode); // LED Off    
 }
 
 void set_system_failed(String message)
-{
-    Serial.println(message);
-    Serial.flush();
+{    
+    Log.fatalln ("Wire.begin FAILED");
+    //Serial.flush();
     while (true)
     {
         digitalWrite(STATUS_LED_RED, HIGH); // LED ON
@@ -55,9 +58,9 @@ void set_system_failed(String message)
         digitalWrite(STATUS_LED_RED, HIGH); // LED ON
         delay(100);
         digitalWrite(STATUS_LED_RED, LOW); // LED ON
-        delay(100);
-        sleep(5);
+        delay(100);        
         yield();
+        delay(500);
     }
 }
 
@@ -103,29 +106,37 @@ std::vector<int> get_i2c_device_list()
 bool oc_configure_i2c_hardware()
 {
     bool ret = false;
-    Log.infoln("\t ___ oc_configure_i2c_hardware (i2c) Starting ___");
+    Log.infoln("___ oc_configure_i2c_hardware (i2c) Starting ___");
     Log.info("PINS SDA:: %d, \t", OVERSEER_SDA_PIN);
     Log.infoln("PINS SCL:: %d", OVERSEER_SCL_PIN);
-
+    Log.infoln("CheckPoint 1a");
     ret = Wire.begin(OVERSEER_SDA_PIN, OVERSEER_SCL_PIN);
     Log.verboseln("Wire.Begin Return:: %b", ret);
-
+    Log.infoln("CheckPoint 1b");
     if (ret == false)
     {
-        Log.verboseln("Bret is false");
+        Log.fatalln ("Wire.begin FAILED");
         return false;
     }
-    Log.infoln("Initializing System Display.");
+
+    Log.infoln("\n\nInitializing System Display.");    
+
+
+    //u8g2 = std::make_unique<U8G2_SSD1306_128X64_NONAME_F_HW_I2C>(
+    //  U8G2_R0, U8X8_PIN_NONE, 9, 8, &I2CBus);
+    // u8g2->begin();
+
     u8g2.begin();
     u8g2.clearBuffer();
+    //u8g2->clearBuffer();
     u8g2.setFont(u8g2_font_ncenB08_tr);
-    u8g2.drawStr(0, 24, "Me So Horny!");
+    u8g2.drawStr(0, 24, "Balls So Heavy");
     u8g2.sendBuffer();
-
+    Log.infoln("Initializing System Display Finished.");
+    Log.verboseln ("MPLEX(ADS1115)::Starting...");
     if (mplex.begin() == false)
     {
         Log.warningln("MPLEX::Begin returned False");
-
         return false;
     }
     else
@@ -133,10 +144,10 @@ bool oc_configure_i2c_hardware()
         Log.verboseln(F("MPLEX (ADS1115) Started"));
     }
 
-    Log.infoln("\t\t Starting DC Current Sensor");
+    Log.infoln("Starting Calibrate DC Current Sensor");
     mplex.calibrateAllChannels();
     Log.infoln("MPLEX::All channels calibrated");    
-    Log.infoln("\t ___ oc_configure_i2c_hardware (i2c) Exit ___");
+    Log.infoln(" ___ oc_configure_i2c_hardware (i2c) Exit ___");
     return true;
 }
 
@@ -162,7 +173,7 @@ void setup()
     overseer_led_start_sequence();
 
     // while (!Serial && !Serial.available()) {}
-    while (!Serial) {}    
+    // while (!Serial) {}    
 
     Log.begin(LOG_LEVEL_VERBOSE, &Serial);
     Log.notice(F(CR "******************************************" CR)); // Info string with Newline
@@ -170,11 +181,10 @@ void setup()
     Log.notice(F(CR "******************************************" CR));
     Serial.flush();
 
-    Log.verbose(F(CR "Loading SPIFFS File System ..." CR));
+    Log.verbose(F(CR "Loading SPIFFS File System ..."));
     if (!SPIFFS.begin(FORMAT_SPIFFS_IF_FAILED))
     {
-        Serial.println("SPIFFS Mount Failed");
-        Serial.flush();
+        Serial.println("SPIFFS Mount Failed");        
         set_system_failed("SPIFFS Mount Failed");
         return;
     }
@@ -191,11 +201,11 @@ void setup()
     // Log.setLevel(configManager.getLogLevel());
 
     Log.notice(F(CR "******************************************\n" CR));
-    Log.infoln("\t\t Starting System Monitor");
+    Log.infoln(CR"Starting System Monitor");
     sysMon = system_utils::createSystemMonitor(configManager);
     sysMon->begin();
 
-    Log.infoln("\t\t Initializing Wifi");
+    Log.infoln("Initializing Wifi");
     wifi = new WiFiManager(configManager);
     wifi->begin();
 
@@ -206,6 +216,7 @@ void setup()
     Log.notice(F(CR "******************************************\n" CR));
     Log.infoln("\tConfigure LED Hardware");
     overseer_led_indicator_configure();
+    Log.infoln("CheckPoint 1");
 
     Log.infoln("Configure and Start I2C.");
     if (oc_configure_i2c_hardware() == false)
@@ -218,7 +229,7 @@ void setup()
         //     Serial.println(address, HEX);  // Proper hex print
         // }
     }
-
+    Log.infoln("CheckPoint 2");
     /**
      * Init Display
      */
@@ -266,8 +277,7 @@ void setup()
     Log.infoln("imu_log_message_interval::%u", running_config.debug_options.imu_log_message_interval);
     Log.infoln("smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.smoothing_alpha);
     Log.infoln("spike_threshold:: %F", running_config.hardware_config.imu.filter_config.spike_threshold);
-    Log.infoln("window_smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.window_smoothing_alpha);
-
+    Log.infoln("window_smoothing_alpha:: %F", running_config.hardware_config.imu.filter_config.window_smoothing_alpha);    
     /*
       TODO: Check that we have the right i2c devices...
     */
@@ -278,8 +288,9 @@ void setup()
     {
         running_config.hardware_config.imu.mpu->begin();
     }
-    Log.infoln("\t\t Starting DHT Sensors");
-    dht1 = overseer::device::environment::getInstance();
+    
+    //Log.infoln("\t\t Starting DHT Sensors");
+    //dht1 = overseer::device::environment::getInstance();
 
     // Start App (web) Server
     if (start_overseer_webserver() == false)
@@ -299,7 +310,7 @@ void overseer_led_indicator_configure()
 {
     pinMode(STATUS_LED_GREEN, OUTPUT);
     pinMode(STATUS_LED_YELLOW, OUTPUT);
-    pinMode(12, OUTPUT);
+    pinMode(STATUS_LED_RED, OUTPUT);
     pinMode(STATUS_LED_INDICATOR, OUTPUT);
 
     digitalWrite(STATUS_LED_GREEN, LOW);      // LED OFF
@@ -310,7 +321,6 @@ void overseer_led_indicator_configure()
 
 void overseer_led_start_sequence()
 {
-    pinMode(STATUS_LED_INDICATOR, OUTPUT);
     blink_blue_led();
     digitalWrite(STATUS_LED_GREEN, HIGH);
 }
@@ -393,7 +403,7 @@ void loop()
     /**
      * Get Env Readings
      */
-    auto env_data = dht1.getData();
-    Log.verboseln("DHT1 - Temp:: %F, RH: %F", env_data.temperature, env_data.humidity);
+    //auto env_data = dht1.getData();
+    //Log.verboseln("DHT1 - Temp:: %F, RH: %F", env_data.temperature, env_data.humidity);
     yield();
 }

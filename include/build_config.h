@@ -9,9 +9,22 @@
 */
 
 #define FORMAT_SPIFFS_IF_FAILED true
+/**
+ * GPIO -> FreeNova Line 
+ * 
+ * ESP PIN  FreeNova    Wire Color
+ * GPIO8 = L12          Yellow 
+ * GPIO9 = L15          Blue
+ * 
+ * GPI10 = L16
+ * 11   =   17
+ * 12   =   18
+ * 13   =   19
+ * 
+ *  */ 
 // I2C INIT
-#define OVERSEER_SDA_PIN 8
-#define OVERSEER_SCL_PIN 9
+#define OVERSEER_SDA_PIN 8 //GPIO8 = L12 
+#define OVERSEER_SCL_PIN 9 //GPIO9 = L15 
 
 // I2C Addresses
 // 0x3C Display

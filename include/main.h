@@ -11,7 +11,7 @@
 #include "web/WebServerManager.h"
 #include "api/IMUApi.h"
 #include "device/ads/MPLEX.h"
-#include "device/environment/DHTFAMILY_instance.h"
+//#include "device/environment/DHTFAMILY_instance.h"
 
 bool start_overseer_webserver();
 bool oc_configure_i2c_hardware();
