@@ -146,3 +146,13 @@ Analog input (ADC1): 1–10, 11, 12, 13 — check your specific S3 variant
 I2C (recommended):
 SDA = GPIO2, SCL = GPIO1
 But you can assign to any GPIO using Wire.begin(sda, scl)
+
+
+
+
+
+
+
+
+
+
