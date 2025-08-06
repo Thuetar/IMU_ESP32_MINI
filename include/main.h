@@ -33,6 +33,7 @@ bool oc_configure_i2c_hardware();
 std::vector<int> get_i2c_device_list();
 void overseer_led_indicator_configure();
 void overseer_led_start_sequence();
+//void print_wcs_current_data(ChannelData&);
 #endif
 
 

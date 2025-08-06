@@ -16,6 +16,7 @@ using namespace overseer;
 using namespace overseer::device::ads;
 using namespace overseer::device::environment;
 using namespace overseer::client::core::string_table;
+
 //using overseer::client::core::string_table::message_boot__system_config_load;
 
 system_utils::SystemMonitor *sysMon = nullptr;
@@ -143,12 +144,13 @@ bool oc_configure_i2c_hardware()
 	 * 
 	 * */ 
 	u8g2.begin();
-	u8g2.clearBuffer();
-	//u8g2->clearBuffer();
-	u8g2.setFontMode(0);				// write solid glyphs
-	u8g2.setFont(u8g2_font_ncenB08_tr);
-	u8g2.drawStr(0, 24, "!!Meow Has Started!!");
+	u8g2.clearBuffer();	
+	//u8g2.setFontMode(0);				// write solid glyphs
+	//u8g2.setFont(u8g2_font_ncenB08_tr);
+	u8g2.setFont(u8g2_font_6x10_tf);
+	u8g2.drawStr(0, 24, "Meow Started");
 	u8g2.sendBuffer();
+	//u8g2.setFontMode(1);
 	
 	Log.infoln("Initializing System Display Finished.");
 
@@ -186,8 +188,34 @@ bool start_overseer_webserver()
 	web->begin();
 	return true;
 }
+void print_wcs_current_data(ChannelData &channelData)
+{
+    Serial.print("ADS:0 Raw Reading:: ");
+    Serial.println(channelData.raw_value);
+    Log.verboseln("Print mplex/ADS Data...");
+    Serial.print("\tAnalog voltage 0: ");
+    Serial.print(channelData.voltage);
+    Serial.print('\n');
+    Serial.print("\tScaled value 0: ");
+    Serial.print(channelData.scaled_value);
+    Serial.print('\n');
+    Serial.print("\tChannel valid: ");
+    Serial.print(channelData.valid ? "true" : "false");
+    Serial.print('\n');
+}
 
-
+//void update_simple_screen () {
+	//float max_gforce = std::max(data.gx, std::max(data.gy, data.gz));
+	//String msg_max_g = "MaxG: " + String(max_gforce, 3);
+	//u8g2.setFont(u8x8_font_chroma48medium8_r);
+	//u8g2.drawStr(0,1, msg_max_g.c_str());
+	//u8g2.setInverseFont(1);
+	////u8g2.drawString(0,0,"012345678901234567890123456789");
+	////u8g2.setInverseFont(0);
+	//u8x8.drawString(0,8,"Line 8");
+	//u8x8.drawString(0,9,"Line 9");
+	//u8g2.refreshDisplay();
+//}
 void setup()
 {
 	Serial.begin(115200);
@@ -270,9 +298,6 @@ void setup()
 	u8g2.drawStr(0, 24, "Me So Horny!");
 	u8g2.sendBuffer();
 	*/
-	Log.infoln("Environment Sensor Starting...");
-	dht1.begin();
-	Log.infoln("Environment Sensor Complete.");
 	delay(1000);  
 	/*
 	if (running_config.debug_enable == true)
@@ -313,9 +338,7 @@ void setup()
 		running_config.hardware_config.imu.mpu->begin();
 	}
 	
-	//Log.infoln("\t\t Starting DHT Sensors");
-	//dht1 = overseer::device::environment::getInstance();
-
+	
 	// Start App (web) Server
 	if (start_overseer_webserver() == false)
 	{
@@ -334,130 +357,90 @@ void setup()
 
 void loop()
 {
-	unsigned long currentMillis = millis(); // For timing of things :)
-
-	while (Serial.available())
-	{
-		char c = Serial.read();
-		if (c == '\n' || c == '\r')
-		{
-			if (inputBuffer.length() > 0)
-			{
-				commandProcessor.processLine(inputBuffer);
-				inputBuffer = "";
-			}
-		}
-		else
-		{
-			inputBuffer += c;
-		}
-	}
-
-	if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval)
-	{
-		if (sysMon)
-			sysMon->update();
-	}
-
-
-	/**
-	 * @details Do MultiPlexer Readings...
-	 *
-	 * Note:: There are two Las_Log times. One for IMU and Another for Device MPLEX
-	 */
-	auto channelData = mplex.getChannelData(WCS_SENSOR_1_ADS_CHANNEL);
-	if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval)
-	{
-		running_config.debug_options.log_last_print_time = currentMillis;
-		if (running_config.debug_enable == true)
-		{
-			Serial.print("ADS:0 Raw Reading:: ");
-			Serial.println(channelData.raw_value);
-			Log.verboseln("Print mplex/ADS Data...");
-			Serial.print("\tAnalog voltage 0: ");
-			Serial.print(channelData.voltage);
-			Serial.print('\n');
-			Serial.print("\tScaled value 0: ");
-			Serial.print(channelData.scaled_value);
-			Serial.print('\n');
-			Serial.print("\tChannel valid: ");
-			Serial.print(channelData.valid ? "true" : "false");
-			Serial.print('\n');
-		}
-	}
-
-	/**
-	 * @details IMU
-	 */
-	running_config.hardware_config.imu.mpu->update();
-	auto sensor_data = running_config.hardware_config.imu.mpu->getData();
-	running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);
-
-	if (running_config.debug_enable == true)
-	{
-		if (running_config.debug_enable == true && running_config.debug_options.enable_imu_print == true)
-		{
-			if (currentMillis - running_config.debug_options.imu_log_last_print_time >= running_config.debug_options.imu_log_message_interval)
-			{
-				running_config.debug_options.imu_log_last_print_time = currentMillis;
-				Log.verboseln("Print IMU Data...");
-				running_config.hardware_config.imu.mpu->printMPUData(sensor_data);
-			}
-		}
-		Log.verboseln("Done with IMU");
-	} // end IMU IF
-
-	/*
-	down the road... 
-		template <typename T>
-		void checkType(const T& value) {
-		if constexpr (std::is_same_v<T, bool>) {
-			std::cout << "Boolean: " << std::boolalpha << value << '\n';
-		} else if constexpr (std::is_floating_point_v<T>) {
-			std::cout << "Floating-point: " << value << '\n';
-		} else {
-			std::cout << "Unknown type\n";
-		}
-		}
-			if constexpr (std::is_same_v<decltype(result), bool>) {
-		std::cout << "Result is boolean\n";
-		if (!result)
-			std::cout << "And it's false\n";
-	} else if constexpr (std::is_floating_point_v<decltype(result)>) {
-		std::cout << "Result is a float or double: " << result << '\n';
-	} else {
-		std::cout << "Other type\n";
-	}        
-	*/
-	if (currentMillis - dht1.getLastReadAttempt() > dht1.getReadInterval()) {
-		//return false;  // Too soon to read again
-		//Log.verboseln("Meow");
-		dht1.update();
-		auto env_data = dht1.getData();
-		dht1.smoothAndFilterData(env_data);
-		Log.infoln ("DHT1 - Temp: %.2f°C, RH: %.2f%%", env_data.temperature, env_data.humidity);
-		Serial.print  (F("Sensor temp: ")); Serial.println(env_data.temperature);
-  		Serial.print  (F("Driver Ver:  ")); Serial.println(env_data.humidity);
-	}
-
-	float max_gforce = std::max(data.gx, std::max(data.gy, data.gz));
-	String msg_max_g = "MaxG: " + String(max_gforce, 3);
-	u8g2.setFont(u8x8_font_chroma48medium8_r);
-	u8g2.drawStr(0,1, msg_max_g.c_str());
-	u8g2.setInverseFont(1);
-	u8g2.drawString(0,0,"012345678901234567890123456789");
-	u8g2.setInverseFont(0);
-	//u8x8.drawString(0,8,"Line 8");
-	//u8x8.drawString(0,9,"Line 9");
-	u8g2.refreshDisplay();
-	
-	
-	/**
-	 * Get Env Readings
-	 */
-	//auto env_data = dht1.getData();
-	//Log.verboseln("DHT1 - Temp:: %F, RH: %F", env_data.temperature, env_data.humidity);
-	yield();
+    unsigned long currentMillis = millis();
+    
+    // Handle serial input
+    while (Serial.available())
+    {
+        char c = Serial.read();
+        if (c == '\n' || c == '\r')
+        {
+            if (inputBuffer.length() > 0)
+            {
+                commandProcessor.processLine(inputBuffer);
+                inputBuffer = "";
+            }
+        }
+        else
+        {
+            inputBuffer += c;
+        }
+    }
+    
+    // System monitor update
+    if (currentMillis - running_config.debug_options.log_last_print_time >= running_config.debug_options.log_message_interval)
+    {
+        if (sysMon) sysMon->update();
+        running_config.debug_options.log_last_print_time = currentMillis;
+    }
+    
+    // Read sensor data
+    overseer::device::ads::ChannelData channelData = mplex.getChannelData(WCS_SENSOR_1_ADS_CHANNEL);
+    ChannelData channelData_2 = mplex.getChannelData(A1);
+    
+    running_config.hardware_config.imu.mpu->update();
+    auto sensor_data = running_config.hardware_config.imu.mpu->getData();
+    running_config.hardware_config.imu.mpu->smoothAndFilterMPUData(sensor_data);
+    
+    // Display update every 5 seconds (separate from debug logging)
+    static unsigned long last_display_update = 0;
+    const unsigned long DISPLAY_UPDATE_INTERVAL = 5000; // 5 seconds
+    
+    if (currentMillis - last_display_update >= DISPLAY_UPDATE_INTERVAL)
+    {
+        last_display_update = currentMillis;
+        
+        // Clear and update display
+        u8g2.clearBuffer();
+        
+        float max_gforce = std::max(sensor_data.gx, std::max(sensor_data.gy, sensor_data.gz));
+        String msg_max_g = "MaxG: " + String(max_gforce, 3);
+        
+        // Display on OLED
+        u8g2.drawStr(0, 12, msg_max_g.c_str());
+        
+        u8g2.setCursor(0, 26);
+        u8g2.print("Max V: ");
+        u8g2.print(channelData.raw_value, 1);
+        u8g2.print("v");
+        
+        u8g2.setCursor(0, 40);
+        u8g2.print("A1: ");
+        u8g2.print(channelData_2.raw_value, 1);
+        
+        u8g2.setCursor(0, 54);
+        u8g2.print("Status: normal");
+        
+        u8g2.sendBuffer();
+    }
+    
+    // Debug logging (separate timing from display)
+    if (running_config.debug_enable == true && running_config.debug_options.enable_imu_print == true)
+    {
+        if (currentMillis - running_config.debug_options.imu_log_last_print_time >= running_config.debug_options.imu_log_message_interval)
+        {
+            running_config.debug_options.imu_log_last_print_time = currentMillis;
+            running_config.hardware_config.imu.mpu->printMPUData(sensor_data);
+            Log.verboseln("Done with IMU");
+            print_wcs_current_data(channelData);
+            
+			String raw = String(channelData_2.raw_value, 1);
+            String msg_sensor_a1 = "A1 Reading: " + raw;
+            Serial.println (msg_sensor_a1);
+        }
+    }
+    
+    yield();
 }
 
 
